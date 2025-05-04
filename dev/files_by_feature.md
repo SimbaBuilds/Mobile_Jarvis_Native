@@ -80,19 +80,8 @@ This document maps each feature to its associated Kotlin native modules and Reac
 ### React Native Files
 - `src/services/NativeModules/VoiceService.ts`: Also includes audio functionality interfaces
 
-## 5. Vapi Integration
 
-### Kotlin Native Files
-- `android/app/src/main/java/com/cameronhightower/mobilejarvisnative/modules/vapi/VapiModule.kt`: React Native bridge for Vapi
-- `android/app/src/main/java/com/cameronhightower/mobilejarvisnative/modules/vapi/VapiPackage.kt`: Package registration for React Native
-- `android/app/src/main/java/com/cameronhightower/mobilejarvisnative/modules/vapi/VapiManager.kt`: Core Vapi functionality
-- `android/app/src/main/java/com/cameronhightower/mobilejarvisnative/modules/vapi/VapiAudioService.kt`: Audio service for Vapi
-
-### React Native Files
-- `src/services/NativeModules/VapiService.ts`: TypeScript interface for the Vapi native module
-- `src/services/api/vapiApi.ts`: API client for Vapi REST endpoints
-
-## 6. Utilities & Core Functionality
+## 5. Utilities & Core Functionality
 
 ### Kotlin Native Files
 - `android/app/src/main/java/com/cameronhightower/mobilejarvisnative/MainActivity.java`: Main activity for the React Native app

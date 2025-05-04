@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Alert, Platform } from 'react-native';
-import WakeWordService from '../../../services/NativeModules/WakeWordService';
+import WakeWordService, { WakeWordEvents } from '../../../services/NativeModules/WakeWordService';
 import { useVoiceState } from './useVoiceState';
 
 /**
@@ -12,20 +12,38 @@ export const useWakeWord = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Get voice state context to coordinate with voice recognition
-  const { voiceState } = useVoiceState();
+  // Track if initialization is complete
+  const initialized = useRef(false);
   
-  // Check if wake word detection is available on this device
+  // Get voice state context to coordinate with voice recognition
+  const { voiceState, setWakeWordEnabled } = useVoiceState();
+  
+  // Check if wake word detection is available on this device and load saved state
   useEffect(() => {
-    const checkAvailability = async () => {
+    const checkAvailabilityAndStatus = async () => {
       setIsLoading(true);
       try {
+        // First check if the feature is available
         const available = await WakeWordService.isAvailable();
         setIsAvailable(available);
         
-        if (!available && Platform.OS === 'android') {
-          setError('Wake word detection is not available on this device');
+        if (!available) {
+          if (Platform.OS === 'android') {
+            setError('Wake word detection is not available on this device');
+          }
+          setIsLoading(false);
+          return;
         }
+        
+        // If available, check if it was previously enabled
+        const wasEnabled = await WakeWordService.getStatus();
+        setIsActive(wasEnabled);
+        
+        // Update the voice context 
+        setWakeWordEnabled(wasEnabled);
+        
+        // Mark as initialized
+        initialized.current = true;
       } catch (err) {
         setError(`Error checking wake word availability: ${err}`);
         console.error('Error in useWakeWord:', err);
@@ -34,8 +52,24 @@ export const useWakeWord = () => {
       }
     };
     
-    checkAvailability();
-  }, []);
+    checkAvailabilityAndStatus();
+    
+    // Set up event listener for service restoration
+    const subscription = WakeWordService.addListener(
+      WakeWordEvents.SERVICE_RESTORED,
+      (event) => {
+        if (event.restored) {
+          console.log('Wake word service was restored from previous session');
+          setIsActive(true);
+          setWakeWordEnabled(true);
+        }
+      }
+    );
+    
+    return () => {
+      subscription.remove();
+    };
+  }, [setWakeWordEnabled]);
   
   // Start wake word detection
   const startDetection = useCallback(async () => {

@@ -12,13 +12,23 @@ interface WakeWordActionResponse {
   warning?: string;
 }
 
+interface WakeWordStatusResponse {
+  enabled: boolean;
+}
+
 // Define the interface for the native module
 interface WakeWordModuleInterface {
   isAvailable(): Promise<WakeWordAvailabilityResponse>;
   startDetection(): Promise<WakeWordActionResponse>;
   stopDetection(): Promise<WakeWordActionResponse>;
+  getStatus(): Promise<WakeWordStatusResponse>;
   setAccessKey(accessKey: string): Promise<WakeWordActionResponse>;
 }
+
+// Define event names
+export const WakeWordEvents = {
+  SERVICE_RESTORED: 'wakeWordServiceRestored'
+};
 
 // Get the native module or create a mock for platforms that don't support it
 const WakeWordModule: WakeWordModuleInterface = Platform.OS === 'android'
@@ -28,6 +38,7 @@ const WakeWordModule: WakeWordModuleInterface = Platform.OS === 'android'
       isAvailable: async () => ({ available: false, reason: 'Platform not supported' }),
       startDetection: async () => ({ success: false, error: 'Platform not supported' }),
       stopDetection: async () => ({ success: false, error: 'Platform not supported' }),
+      getStatus: async () => ({ enabled: false }),
       setAccessKey: async () => ({ success: false, error: 'Platform not supported' }),
     };
 
@@ -78,6 +89,19 @@ class WakeWordService {
         success: false,
         error: `Failed to stop wake word detection: ${error}`,
       };
+    }
+  }
+  
+  /**
+   * Get the current wake word detection status
+   */
+  static async getStatus(): Promise<boolean> {
+    try {
+      const result = await WakeWordModule.getStatus();
+      return result.enabled;
+    } catch (error) {
+      console.error('Error getting wake word status:', error);
+      return false;
     }
   }
 

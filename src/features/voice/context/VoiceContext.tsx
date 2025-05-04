@@ -37,6 +37,11 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
   // Computed state
   const isListening = voiceState === VoiceState.LISTENING;
   
+  // Log when wake word state changes for debugging purposes
+  useEffect(() => {
+    console.log(`Wake word enabled state changed to: ${isWakeWordEnabled}`);
+  }, [isWakeWordEnabled]);
+  
   // Start listening for voice input
   const startListening = useCallback(async (): Promise<boolean> => {
     try {
@@ -80,6 +85,7 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
     setError(null);
     setTranscript('');
     setResponse('');
+    // We don't reset isWakeWordEnabled here as that's a persistent setting
   }, []);
   
   // Effect to handle wake word detection state change
@@ -90,6 +96,11 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
     }
   }, [voiceState, startListening]);
   
+  // Safe wrapper for setWakeWordEnabled to ensure proper typing
+  const handleSetWakeWordEnabled = useCallback((enabled: boolean) => {
+    setWakeWordEnabled(enabled);
+  }, []);
+  
   // Context value
   const value: VoiceContextValue = {
     voiceState,
@@ -99,7 +110,7 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
     response,
     isListening,
     setVoiceState,
-    setWakeWordEnabled,
+    setWakeWordEnabled: handleSetWakeWordEnabled,
     setError,
     setTranscript,
     setResponse,

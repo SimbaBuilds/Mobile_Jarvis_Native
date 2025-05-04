@@ -32,11 +32,6 @@
                     - 📄 AudioModule.kt
                     - 📄 AudioPackage.kt
                     - 📄 TextToSpeechManager.kt
-                  - 📁 vapi/
-                    - 📄 VapiModule.kt
-                    - 📄 VapiPackage.kt
-                    - 📄 VapiManager.kt
-                    - 📄 VapiAudioService.kt
                 - 📁 utils/
                   - 📄 Constants.kt
                   - 📄 NetworkUtils.kt
@@ -89,7 +84,6 @@
       - 📄 WakeWordService.ts
       - 📄 VoiceService.ts
       - 📄 PermissionsService.ts
-      - 📄 VapiService.ts
     - 📁 api/
       - 📄 vapiApi.ts
   - 📁 store/

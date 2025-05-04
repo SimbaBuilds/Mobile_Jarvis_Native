@@ -14,14 +14,20 @@ import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.WritableMap
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.modules.core.DeviceEventManagerModule
+import com.facebook.react.bridge.LifecycleEventListener
 
 /**
  * React Native module for wake word detection
  */
 class WakeWordModule(private val reactContext: ReactApplicationContext) : 
-    ReactContextBaseJavaModule(reactContext) {
+    ReactContextBaseJavaModule(reactContext), LifecycleEventListener {
     
     private val TAG = "WakeWordModule"
+    
+    init {
+        // Register for lifecycle events to handle service persistence
+        reactContext.addLifecycleEventListener(this)
+    }
     
     override fun getName(): String = "WakeWordModule"
     
@@ -80,6 +86,9 @@ class WakeWordModule(private val reactContext: ReactApplicationContext) :
                 reactContext.startService(serviceIntent)
             }
             
+            // Save the preference
+            ConfigManager.getInstance().setWakeWordEnabled(true)
+            
             val response: WritableMap = Arguments.createMap()
             response.putBoolean("success", true)
             promise.resolve(response)
@@ -100,6 +109,9 @@ class WakeWordModule(private val reactContext: ReactApplicationContext) :
             val serviceIntent = Intent(reactContext, WakeWordService::class.java)
             val stopped = reactContext.stopService(serviceIntent)
             
+            // Save the preference
+            ConfigManager.getInstance().setWakeWordEnabled(false)
+            
             val response: WritableMap = Arguments.createMap()
             response.putBoolean("success", stopped)
             
@@ -112,6 +124,23 @@ class WakeWordModule(private val reactContext: ReactApplicationContext) :
         } catch (e: Exception) {
             Log.e(TAG, "Error stopping wake word detection: ${e.message}", e)
             promise.reject("ERROR", "Failed to stop wake word detection: ${e.message}")
+        }
+    }
+    
+    /**
+     * Get current wake word detection status
+     */
+    @ReactMethod
+    fun getStatus(promise: Promise) {
+        try {
+            val isEnabled = ConfigManager.getInstance().isWakeWordEnabled()
+            
+            val response: WritableMap = Arguments.createMap()
+            response.putBoolean("enabled", isEnabled)
+            promise.resolve(response)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting wake word status: ${e.message}", e)
+            promise.reject("ERROR", "Failed to get wake word status: ${e.message}")
         }
     }
     
@@ -151,5 +180,46 @@ class WakeWordModule(private val reactContext: ReactApplicationContext) :
             Log.e(TAG, "Wake word detection not available: ${e.message}", e)
             false
         }
+    }
+    
+    /**
+     * Handle host activity resume lifecycle event to restore the wake word service
+     * if it was enabled before
+     */
+    override fun onHostResume() {
+        try {
+            // Check if wake word detection was enabled
+            if (ConfigManager.getInstance().isWakeWordEnabled()) {
+                // Make sure we have permission
+                if (!PermissionUtils.hasPermission(reactContext, Manifest.permission.RECORD_AUDIO)) {
+                    Log.w(TAG, "Cannot restore wake word service: missing microphone permission")
+                    return
+                }
+                
+                Log.i(TAG, "Restoring wake word detection service from previous session")
+                val serviceIntent = Intent(reactContext, WakeWordService::class.java)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    reactContext.startForegroundService(serviceIntent)
+                } else {
+                    reactContext.startService(serviceIntent)
+                }
+                
+                // Notify JS layer that service was restored
+                val params = Arguments.createMap()
+                params.putBoolean("restored", true)
+                sendEvent("wakeWordServiceRestored", params)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error restoring wake word service: ${e.message}", e)
+        }
+    }
+    
+    override fun onHostPause() {
+        // No specific action needed on pause
+    }
+    
+    override fun onHostDestroy() {
+        // If app is explicitly closed, we should keep the state in preferences
+        // but we don't need to stop the service as Android will handle that
     }
 }

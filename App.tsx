@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, Platform, ActivityIndicator } from 'react-native';
 import { VoiceProvider } from './src/features/voice/context/VoiceContext';
 import { WakeWordToggle } from './src/features/voice/components/WakeWordToggle';
 import { usePermissions } from './src/hooks/usePermissions';
 import { VoiceAssistant } from './src/components/VoiceAssistant/VoiceAssistant';
 import { VoiceErrorBoundary } from './src/components/ErrorBoundary/VoiceErrorBoundary';
+import WakeWordService from './src/services/NativeModules/WakeWordService';
 
 const PermissionsSection = () => {
   const {
@@ -65,6 +66,22 @@ const PermissionsSection = () => {
 };
 
 export default function App() {
+  // Initialize any needed configurations here
+  useEffect(() => {
+    // Initialize app settings
+    const initializeApp = async () => {
+      try {
+        // Check if wake word detection is available
+        const isAvailable = await WakeWordService.isAvailable();
+        console.log(`Wake word detection available: ${isAvailable}`);
+      } catch (error) {
+        console.error('Error initializing app:', error);
+      }
+    };
+    
+    initializeApp();
+  }, []);
+
   return (
     <VoiceProvider>
       <SafeAreaView style={styles.container}>
@@ -95,7 +112,8 @@ export default function App() {
             {Platform.OS === 'android' && (
               <Text style={styles.infoText}>
                 Note: On Android, a service runs in the background with a notification while
-                wake word detection is active.
+                wake word detection is active. Your wake word preference will be remembered
+                between app sessions.
               </Text>
             )}
           </View>
