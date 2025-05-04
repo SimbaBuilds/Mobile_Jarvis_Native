@@ -8,12 +8,19 @@ This document maps each feature to its associated Kotlin native modules and Reac
 - `android/app/src/main/java/com/cameronhightower/mobilejarvisnative/modules/wakeword/WakeWordModule.kt`: React Native bridge for wake word functionality
 - `android/app/src/main/java/com/cameronhightower/mobilejarvisnative/modules/wakeword/WakeWordPackage.kt`: Package registration for React Native
 - `android/app/src/main/java/com/cameronhightower/mobilejarvisnative/modules/wakeword/WakeWordService.kt`: Background service for wake word detection
+- `android/app/src/main/java/com/cameronhightower/mobilejarvisnative/utils/ConfigManager.kt`: Configuration management for wake word settings
+- `android/app/src/main/assets/config.properties`: Configuration file storing wake word settings and API keys
 
 ### React Native Files
 - `src/services/NativeModules/WakeWordService.ts`: TypeScript interface for the native module
 - `src/features/voice/hooks/useWakeWord.ts`: Custom hook for wake word detection
 - `src/features/voice/components/WakeWordToggle.tsx`: UI component to toggle wake word detection
 - `src/types/voice.ts`: TypeScript types for wake word functionality
+- `src/features/voice/context/VoiceContext.tsx`: Context provider for voice state management
+- `src/features/voice/hooks/useVoiceState.ts`: Hook for managing voice state
+
+### Documentation
+- `dev/wakeword_setup.md`: Setup instructions and documentation for wake word detection
 
 ## 2. Voice Processing
 
@@ -32,19 +39,35 @@ This document maps each feature to its associated Kotlin native modules and Reac
 - `src/components/VoiceAssistant/VoiceAssistant.tsx`: Main voice assistant component
 - `src/components/VoiceAssistant/VoiceButton.tsx`: Button for activating voice input
 - `src/components/VoiceAssistant/VoiceResponseDisplay.tsx`: Component for displaying responses
+- `src/components/ErrorBoundary/VoiceErrorBoundary.tsx`: Error boundary for handling voice feature errors
 
 ## 3. Permissions Management
 
 ### Kotlin Native Files
 - `android/app/src/main/java/com/cameronhightower/mobilejarvisnative/modules/permissions/PermissionsModule.kt`: React Native bridge for permissions
 - `android/app/src/main/java/com/cameronhightower/mobilejarvisnative/modules/permissions/PermissionsPackage.kt`: Package registration for React Native
-- `android/app/src/main/java/com/cameronhightower/mobilejarvisnative/utils/PermissionUtils.kt`: Utility functions for permissions
+- `android/app/src/main/java/com/cameronhightower/mobilejarvisnative/utils/PermissionUtils.kt`: Utility functions for handling permissions
+- `android/app/src/main/java/com/cameronhightower/mobilejarvisnative/utils/Constants.kt`: Constants for permission request codes
+- `android/app/src/main/java/com/cameronhightower/mobilejarvisnative/utils/UIUtils.kt`: UI utility functions for permissions
 
 ### React Native Files
 - `src/services/NativeModules/PermissionsService.ts`: TypeScript interface for the native module
 - `src/hooks/usePermissions.ts`: Custom hook for managing permissions
 - `src/utils/permissions.ts`: Utility functions for handling permissions
 - `src/types/permissions.ts`: TypeScript types for permissions
+
+### Integration Points
+- `android/app/src/main/java/com/cameronhightower/mobilejarvisnative/MainActivity.java`: Permission handling in main activity
+- `App.tsx`: Permission UI and state management
+- `src/features/voice/components/WakeWordToggle.tsx`: Integration with wake word feature
+
+### Features
+- Microphone permission management for voice recognition
+- Battery optimization exemption for background services
+- Permission state management and UI feedback
+- Integration with wake word detection feature
+- Cross-platform support (Android/iOS)
+- TypeScript type safety throughout the React Native layer
 
 ## 4. Audio Processing
 

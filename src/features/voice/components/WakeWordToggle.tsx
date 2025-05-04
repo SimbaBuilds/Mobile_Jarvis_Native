@@ -1,96 +1,67 @@
-import React, { useEffect } from 'react';
-import { View, Switch, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import React from 'react';
+import { View, Text, Switch, StyleSheet, Platform } from 'react-native';
 import { useWakeWord } from '../hooks/useWakeWord';
-import { useVoiceState } from '../hooks/useVoiceState';
+import { usePermissions } from '../../../hooks/usePermissions';
 
 interface WakeWordToggleProps {
-  label?: string;
+  label: string;
 }
 
 /**
  * Toggle switch for enabling/disabling wake word detection
  */
-export const WakeWordToggle: React.FC<WakeWordToggleProps> = ({
-  label = 'Wake Word Detection',
-}) => {
-  const {
-    isAvailable,
-    isActive,
-    isLoading,
-    error,
-    toggleDetection,
-  } = useWakeWord();
-  
-  const { setWakeWordEnabled } = useVoiceState();
-  
-  // Update the global voice state when wake word is toggled
-  useEffect(() => {
-    setWakeWordEnabled(isActive);
-  }, [isActive, setWakeWordEnabled]);
-  
-  if (!isAvailable) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.label}>{label}</Text>
-        <Text style={styles.errorText}>
-          Not available on this device
-        </Text>
-      </View>
-    );
-  }
-  
+export const WakeWordToggle: React.FC<WakeWordToggleProps> = ({ label }) => {
+  const { isEnabled, toggleWakeWord } = useWakeWord();
+  const { hasMicrophonePermission, hasBatteryOptimizationExemption } = usePermissions();
+
+  const canEnableWakeWord = Platform.OS === 'ios' || 
+    (hasMicrophonePermission && hasBatteryOptimizationExemption);
+
+  const handleToggle = () => {
+    if (canEnableWakeWord) {
+      toggleWakeWord();
+    }
+  };
+
   return (
     <View style={styles.container}>
-      <View style={styles.labelContainer}>
+      <View style={styles.row}>
         <Text style={styles.label}>{label}</Text>
-        {error && <Text style={styles.errorText}>{error}</Text>}
+        <Switch
+          value={isEnabled}
+          onValueChange={handleToggle}
+          disabled={!canEnableWakeWord}
+        />
       </View>
       
-      <View style={styles.controlContainer}>
-        {isLoading ? (
-          <ActivityIndicator size="small" color="#0066cc" />
-        ) : (
-          <Switch
-            value={isActive}
-            onValueChange={toggleDetection}
-            disabled={isLoading}
-            trackColor={{ false: '#767577', true: '#81b0ff' }}
-            thumbColor={isActive ? '#0066cc' : '#f4f3f4'}
-          />
-        )}
-      </View>
+      {!canEnableWakeWord && Platform.OS === 'android' && (
+        <Text style={styles.warning}>
+          Please grant microphone permission and optimize battery usage to enable wake word detection.
+        </Text>
+      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
     marginVertical: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
-  labelContainer: {
-    flex: 1,
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
   },
   label: {
     fontSize: 16,
-    fontWeight: '500',
+    color: '#333',
+    flex: 1,
+    marginRight: 16,
   },
-  errorText: {
-    color: 'red',
+  warning: {
     fontSize: 12,
+    color: '#ff6b6b',
     marginTop: 4,
-  },
-  controlContainer: {
-    marginLeft: 16,
   },
 });

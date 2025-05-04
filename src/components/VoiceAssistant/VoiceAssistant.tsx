@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { VoiceButton } from './VoiceButton';
 import { VoiceResponseDisplay } from './VoiceResponseDisplay';
 import { useVoiceRecognition } from '../../features/voice/hooks/useVoiceRecognition';
@@ -23,7 +23,9 @@ export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({
     isListening,
     isSpeaking,
     recognizedText,
-    voiceState
+    voiceState,
+    isInitializing,
+    error
   } = useVoiceRecognition({
     onResult: (text) => {
       if (text) {
@@ -49,6 +51,18 @@ export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({
       return () => clearTimeout(timer);
     }
   }, [isListening, isSpeaking]);
+
+  if (isInitializing) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
+
+  if (error) {
+    throw error; // This will be caught by the error boundary
+  }
   
   return (
     <View style={styles.container}>
@@ -73,6 +87,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'space-between',
     padding: 16,
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   responseContainer: {
     flex: 1,

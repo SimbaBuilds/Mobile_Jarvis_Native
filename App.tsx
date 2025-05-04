@@ -1,14 +1,70 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, Platform } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, Platform, ActivityIndicator } from 'react-native';
 import { VoiceProvider } from './src/features/voice/context/VoiceContext';
 import { WakeWordToggle } from './src/features/voice/components/WakeWordToggle';
+import { usePermissions } from './src/hooks/usePermissions';
+import { VoiceAssistant } from './src/components/VoiceAssistant/VoiceAssistant';
+import { VoiceErrorBoundary } from './src/components/ErrorBoundary/VoiceErrorBoundary';
+
+const PermissionsSection = () => {
+  const {
+    permissions,
+    loading,
+    requestMicrophone,
+    requestBatteryExemption,
+    hasMicrophonePermission,
+    hasBatteryOptimizationExemption,
+  } = usePermissions();
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#0000ff" />
+        <Text style={styles.loadingText}>Checking permissions...</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.permissionsSection}>
+      <Text style={styles.sectionTitle}>Required Permissions</Text>
+      
+      <View style={styles.permissionItem}>
+        <Text style={styles.permissionTitle}>Microphone Access</Text>
+        <Text style={styles.permissionStatus}>
+          Status: {hasMicrophonePermission ? '✅ Granted' : '❌ Not Granted'}
+        </Text>
+        {!hasMicrophonePermission && (
+          <Text 
+            style={styles.permissionButton}
+            onPress={requestMicrophone}
+          >
+            Grant Microphone Permission
+          </Text>
+        )}
+      </View>
+
+      {Platform.OS === 'android' && (
+        <View style={styles.permissionItem}>
+          <Text style={styles.permissionTitle}>Battery Optimization</Text>
+          <Text style={styles.permissionStatus}>
+            Status: {hasBatteryOptimizationExemption ? '✅ Optimized' : '❌ Not Optimized'}
+          </Text>
+          {!hasBatteryOptimizationExemption && (
+            <Text 
+              style={styles.permissionButton}
+              onPress={requestBatteryExemption}
+            >
+              Optimize Battery Usage
+            </Text>
+          )}
+        </View>
+      )}
+    </View>
+  );
+};
 
 export default function App() {
-  // Initialize any needed configurations here
-  useEffect(() => {
-    // Initialize app settings
-  }, []);
-
   return (
     <VoiceProvider>
       <SafeAreaView style={styles.container}>
@@ -18,10 +74,18 @@ export default function App() {
             <Text style={styles.subtitle}>Say "Jarvis" to activate</Text>
           </View>
           
+          <PermissionsSection />
+          
           <View style={styles.settingsSection}>
             <Text style={styles.sectionTitle}>Settings</Text>
             <WakeWordToggle label="Wake Word Detection (Jarvis)" />
           </View>
+
+          <VoiceErrorBoundary>
+            <View style={styles.voiceAssistantContainer}>
+              <VoiceAssistant onSpeechResult={(text) => console.log('Speech recognized:', text)} />
+            </View>
+          </VoiceErrorBoundary>
           
           <View style={styles.infoSection}>
             <Text style={styles.infoText}>
@@ -63,6 +127,44 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 8,
   },
+  loadingContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    color: '#666',
+  },
+  permissionsSection: {
+    marginVertical: 16,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  permissionItem: {
+    marginVertical: 8,
+  },
+  permissionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  permissionStatus: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+  },
+  permissionButton: {
+    color: '#007AFF',
+    marginTop: 8,
+    fontSize: 14,
+    fontWeight: '500',
+  },
   settingsSection: {
     marginVertical: 16,
   },
@@ -82,5 +184,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#444',
     marginBottom: 8,
+  },
+  voiceAssistantContainer: {
+    minHeight: 200,
+    marginVertical: 16,
   },
 });
