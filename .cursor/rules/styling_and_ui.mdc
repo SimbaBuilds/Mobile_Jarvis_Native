@@ -1,0 +1,172 @@
+---
+description: Read when designing UI components or  implementing styling approaches
+globs: 
+alwaysApply: false
+---
+# React Native Styling and UI Best Practices
+
+### Choose a Consistent Styling Approach
+- StyleSheet API: Best for performance but less flexible.
+- Styled Components / Emotion: More flexible but with a small performance cost.
+- NativeWind (Tailwind for RN): Good for rapid development with utility classes.
+
+### Create a Design System
+- Define design tokens (colors, spacing, typography) in a central location.
+- Create reusable styled components based on your design system.
+
+```typescript
+// design/tokens.ts
+export const colors = {
+  primary: '#0088cc',
+  secondary: '#95a5a6',
+  text: {
+    primary: '#2c3e50',
+    secondary: '#7f8c8d',
+  },
+  background: '#ffffff',
+};
+
+export const spacing = {
+  xs: 4,
+  sm: 8,
+  md: 16,
+  lg: 24,
+  xl: 32,
+};
+
+export const typography = {
+  fontSize: {
+    small: 12,
+    body: 14,
+    h3: 18,
+    h2: 22,
+    h1: 28,
+  },
+  fontWeight: {
+    regular: '400',
+    medium: '500',
+    bold: '700',
+  },
+};
+```
+
+### Separate Styles from Component Logic
+- Keep styles in separate files for complex components.
+- Use the StyleSheet API for better performance.
+
+```typescript
+// Button.styles.ts
+import { StyleSheet } from 'react-native';
+import { colors, spacing } from '@design/tokens';
+
+export default StyleSheet.create({
+  container: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: spacing.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primary: {
+    backgroundColor: colors.primary,
+  },
+  secondary: {
+    backgroundColor: colors.secondary,
+  },
+  text: {
+    color: colors.background,
+    fontWeight: '600',
+  },
+});
+```
+
+### Support Dark Mode
+- Use dynamic colors based on the current theme.
+- Test your app in both light and dark modes.
+
+## Accessibility
+### Implement Proper Accessibility Features
+- Use appropriate accessibility props (accessible, accessibilityLabel, etc.).
+- Test with screen readers (VoiceOver on iOS, TalkBack on Android).
+
+```typescript
+<TouchableOpacity
+  accessible={true}
+  accessibilityLabel="Tap to submit form"
+  accessibilityHint="Submits the form and navigates to the next screen"
+  onPress={handleSubmit}
+>
+  <Text>Submit</Text>
+</TouchableOpacity>
+```
+
+### Support Dynamic Font Sizes
+- Respect user's font size settings when appropriate.
+- Test with different font scale settings.
+
+## Internationalization
+
+### Support Multiple Languages
+- Use a library like i18next or react-native-localize.
+- Extract all user-facing strings to translation files.
+
+```typescript
+import i18n from 'i18next';
+import { initReactI18next } from 'react-i18next';
+
+i18n
+  .use(initReactI18next)
+  .init({
+    resources: {
+      en: { translation: { welcome: 'Welcome' } },
+      es: { translation: { welcome: 'Bienvenido' } },
+    },
+    lng: 'en',
+    fallbackLng: 'en',
+  });
+
+// In component
+import { useTranslation } from 'react-i18next';
+
+const MyComponent = () => {
+  const { t } = useTranslation();
+  return <Text>{t('welcome')}</Text>;
+};
+```
+
+## UI Component Best Practices
+
+### Create Consistent Button Variants
+- Implement a Button component with different variants (primary, secondary, outline).
+- Ensure buttons have appropriate touch targets (at least 44x44 points).
+
+### Form Input Components
+- Create reusable form input components with consistent styling.
+- Include proper error handling and accessibility.
+
+### Use Content-Specific Components
+- Create specialized components for different content types (cards, lists, etc.).
+- Ensure components are adaptable to different screen sizes.
+
+### Modal and Dialog Best Practices
+- Ensure modals can be dismissed with a physical back button on Android.
+- Implement proper focus management for accessibility.
+- Use React Native's Modal component or a third-party library for consistent behavior.
+
+### Handle Empty States and Loading
+- Design and implement consistent empty states for lists and screens.
+- Create reusable loading indicators with appropriate animations.
+
+## Responsive Design
+
+### Use Flexbox for Layouts
+- Leverage React Native's implementation of Flexbox for responsive layouts.
+- Avoid fixed dimensions when possible.
+
+### Adapt to Different Screen Sizes
+- Use percentage values or flex for width/height where appropriate.
+- Test on different screen sizes and orientations.
+
+### Handle Safe Areas
+- Use SafeAreaView or similar components to handle device notches and system bars.
+- Test on devices with different form factors (notches, punch holes, etc.). 

@@ -1,0 +1,155 @@
+---
+description: Read when implementing navigation structures or form handling
+globs: 
+alwaysApply: false
+---
+# React Native Navigation and Form Handling Best Practices
+
+### Use React Navigation
+- React Navigation is the recommended navigation library.
+- Organize navigators by feature or authentication state.
+
+```typescript
+const Stack = createStackNavigator();
+const Tab = createBottomTabNavigator();
+
+// Main navigator
+const RootNavigator = () => {
+  const { isAuthenticated } = useAuth();
+  
+  return (
+    <NavigationContainer>
+      {isAuthenticated ? <AppStack /> : <AuthStack />}
+    </NavigationContainer>
+  );
+};
+
+// Feature navigator
+const AppStack = () => (
+  <Tab.Navigator>
+    <Tab.Screen name="Home" component={HomeNavigator} />
+    <Tab.Screen name="Profile" component={ProfileNavigator} />
+  </Tab.Navigator>
+);
+
+const HomeNavigator = () => (
+  <Stack.Navigator>
+    <Stack.Screen name="Feed" component={FeedScreen} />
+    <Stack.Screen name="Details" component={DetailsScreen} />
+  </Stack.Navigator>
+);
+```
+
+### Optimize Navigation Performance
+- Use screen options to control when screens are mounted/unmounted.
+- Avoid deep navigation hierarchies.
+
+```typescript
+<Stack.Navigator
+  screenOptions={{
+    headerShown: false,
+    unmountOnBlur: true, // Unmount screen when navigating away
+  }}
+>
+  {/* Screen definitions */}
+</Stack.Navigator>
+```
+
+### Best Practices for Navigation State Management
+- Use the navigation state for UI-related state only.
+- Keep business logic separate from navigation.
+- Use navigation params sparingly for essential data only.
+
+### Deep Linking
+- Configure deep linking for your app to support direct navigation to specific screens.
+- Handle universal links and app links properly.
+
+### Navigation Transitions
+- Customize transitions between screens for a polished user experience.
+- Ensure transitions are smooth and performant.
+
+## Form Handling
+
+### Use React Hook Form
+- Prefer React Hook Form over Formik for better performance.
+- Integrate with your UI components.
+
+```typescript
+import { useForm, Controller } from 'react-hook-form';
+import { TextInput, Button, Text, View } from 'react-native';
+
+const LoginForm = () => {
+  const { control, handleSubmit, errors } = useForm();
+  
+  const onSubmit = (data) => {
+    // Handle form submission
+  };
+  
+  return (
+    <View>
+      <Controller
+        control={control}
+        render={({ field: { onChange, onBlur, value } }) => (
+          <TextInput
+            onBlur={onBlur}
+            onChangeText={onChange}
+            value={value}
+            placeholder="Email"
+          />
+        )}
+        name="email"
+        rules={{ required: true, pattern: /^\S+@\S+$/i }}
+        defaultValue=""
+      />
+      {errors.email && <Text>Email is required and must be valid.</Text>}
+      
+      <Button title="Submit" onPress={handleSubmit(onSubmit)} />
+    </View>
+  );
+};
+```
+
+### Implement Form Validation
+- Use validation rules with React Hook Form.
+- Provide clear error messages for users.
+- Implement real-time validation feedback when appropriate.
+
+### Handle Form Inputs Efficiently
+- Create reusable form components for different input types.
+- Handle keyboard appearance and dismissal appropriately.
+- Implement proper focus management between fields.
+
+### Form Submission
+- Show loading indicators during form submission.
+- Implement error handling for form submission failures.
+- Provide clear success feedback after successful submission.
+
+### Keyboard Handling
+- Handle keyboard appearance and ensure it doesn't obscure input fields.
+- Use KeyboardAvoidingView or similar solutions.
+
+```typescript
+import { KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+
+const FormScreen = () => {
+  return (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1 }}
+    >
+      <ScrollView contentContainerStyle={{ padding: 16 }}>
+        {/* Form components */}
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+};
+```
+
+### Persist Form State When Needed
+- Save form state in local storage for long forms.
+- Implement proper form state restoration after app restart.
+
+### Complex Form Handling
+- Break down complex forms into smaller sections or steps.
+- Implement wizard-style forms for lengthy processes.
+- Consider using a context for state management in multi-step forms. 

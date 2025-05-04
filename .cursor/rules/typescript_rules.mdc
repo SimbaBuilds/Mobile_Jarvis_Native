@@ -1,0 +1,13 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Description: Rules for TypeScript (React Native)
+
+# Guidelines
+- Use TypeScript with strict mode enabled.
+- Prefer functional components over class components.
+- Use interfaces for props (e.g., `interface ButtonProps`).
+- Avoid `any` types—always specify explicit types.
+- Include error handling for async operations with try/catch.

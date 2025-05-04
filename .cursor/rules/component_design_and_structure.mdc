@@ -1,0 +1,122 @@
+---
+description: Read when adding a new feature that will involve several components or a lot of shared state.
+globs: 
+alwaysApply: false
+---
+# React Native Component Design and Structure Best Practices
+
+## Project Structure and Imports
+
+### Use Import Aliases
+- Configure import aliases to avoid deep relative import paths.
+- Example in `babel.config.js` or `tsconfig.json`:
+
+```javascript
+// In tsconfig.json
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@components/*": ["src/components/*"],
+      "@features/*": ["src/features/*"],
+      "@hooks/*": ["src/hooks/*"],
+      "@utils/*": ["src/utils/*"]
+    }
+  }
+}
+```
+
+## Component Design
+
+### Keep Components Small and Focused
+- Each component should do one thing well.
+- Limit component size to under 300 lines as a rule of thumb.
+- Extract reusable logic into custom hooks.
+
+### Implement Component Composition
+- Favor composition over inheritance.
+- Use the children prop to create flexible container components.
+
+```typescript
+// Good
+const Card = ({ children, style }) => (
+  <View style={[styles.card, style]}>
+    {children}
+  </View>
+);
+
+// Usage
+<Card>
+  <Text>Content goes here</Text>
+</Card>
+```
+
+### Use Functional Components with Hooks
+- Prefer functional components with hooks over class components.
+- Convert existing class components to functional components when making significant changes.
+### Implement Proper Prop Validation
+- Use TypeScript interfaces or PropTypes to validate component props.
+- Provide default prop values when appropriate.
+
+```typescript
+interface ButtonProps {
+  title: string;
+  onPress: () => void;
+  disabled?: boolean;
+  variant?: 'primary' | 'secondary' | 'outline';
+}
+
+const Button: React.FC<ButtonProps> = ({
+  title,
+  onPress,
+  disabled = false,
+  variant = 'primary',
+}) => {
+  // Component implementation
+};
+```
+
+## State Management
+
+### Use Built-in React State Management
+- Use React's built-in useState and useContext for most state management needs.
+
+### Manage Form State Efficiently
+- Use React Hook Form instead of Formik for better performance and less code.
+
+### Avoid Prop Drilling
+- Use Context API or state management libraries to avoid excessive prop drilling.
+
+## Cross-Platform Considerations
+
+### Write Platform-Specific Code When Necessary
+- Use platform-specific file extensions (.ios.js, .android.js).
+- Use the Platform API for conditional logic.
+
+```typescript
+import { Platform, StyleSheet } from 'react-native';
+
+const styles = StyleSheet.create({
+  container: {
+    ...Platform.select({
+      ios: {
+        shadowColor: 'black',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+});
+```
+
+### Test on Both Platforms
+- Regularly test your app on both iOS and Android.
+- Address platform-specific issues early.
+
+### Handle Platform-Specific UI Guidelines
+- Follow platform-specific UI guidelines when appropriate.
+- Consider using platform-specific components for native look and feel. 
