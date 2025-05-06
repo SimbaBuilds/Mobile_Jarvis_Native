@@ -85,7 +85,6 @@
       - 📄 VoiceService.ts
       - 📄 PermissionsService.ts
     - 📁 api/
-      - 📄 vapiApi.ts
   - 📁 store/
   - 📁 styles/
   - 📁 types/
