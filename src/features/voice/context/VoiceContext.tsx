@@ -9,6 +9,8 @@ const VoiceContext = createContext<VoiceContextValue>({
   transcript: '',
   response: '',
   isListening: false,
+  isSpeaking: false,
+  isError: false,
   setVoiceState: () => {},
   setWakeWordEnabled: () => {},
   setError: () => {},
@@ -17,6 +19,7 @@ const VoiceContext = createContext<VoiceContextValue>({
   startListening: async () => false,
   stopListening: async () => false,
   resetState: () => {},
+  interruptSpeech: async () => false,
 });
 
 interface VoiceProviderProps {
@@ -36,6 +39,8 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
   
   // Computed state
   const isListening = voiceState === VoiceState.LISTENING;
+  const isSpeaking = voiceState === VoiceState.SPEAKING;
+  const isError = voiceState === VoiceState.ERROR;
   
   // Log when wake word state changes for debugging purposes
   useEffect(() => {
@@ -101,6 +106,23 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
     setWakeWordEnabled(enabled);
   }, []);
   
+  // Interrupt current speech
+  const interruptSpeech = useCallback(async (): Promise<boolean> => {
+    try {
+      if (isSpeaking) {
+        setVoiceState(VoiceState.IDLE);
+        // Here we would actually stop the speech
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Error interrupting speech:', err);
+      setError(`Error interrupting speech: ${err}`);
+      setVoiceState(VoiceState.ERROR);
+      return false;
+    }
+  }, [isSpeaking]);
+  
   // Context value
   const value: VoiceContextValue = {
     voiceState,
@@ -109,6 +131,8 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
     transcript,
     response,
     isListening,
+    isSpeaking,
+    isError,
     setVoiceState,
     setWakeWordEnabled: handleSetWakeWordEnabled,
     setError,
@@ -117,6 +141,7 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
     startListening,
     stopListening,
     resetState,
+    interruptSpeech,
   };
   
   return <VoiceContext.Provider value={value}>{children}</VoiceContext.Provider>;

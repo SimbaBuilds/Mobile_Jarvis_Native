@@ -11,3 +11,6 @@ Description: Rules for TypeScript (React Native)
 - Use interfaces for props (e.g., `interface ButtonProps`).
 - Avoid `any` types—always specify explicit types.
 - Include error handling for async operations with try/catch.
+- Define navigation types using `NativeStackNavigationProp` for type-safe navigation.
+- Pass navigation prop to components that need navigation access.
+- Use navigation prop from screen options for header actions.

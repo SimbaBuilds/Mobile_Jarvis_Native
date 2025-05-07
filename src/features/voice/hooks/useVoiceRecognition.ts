@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
-import { useVoiceState } from './useVoiceState';
-import { VoiceState } from '../../../services/NativeModules/VoiceService';
+import { useVoiceState } from '../context/VoiceContext';
+import { VoiceState } from '../../../types/voice';
 
 /**
  * Hook for handling voice recognition

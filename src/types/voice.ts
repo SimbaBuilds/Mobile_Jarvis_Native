@@ -20,6 +20,8 @@ export interface VoiceContextState {
   transcript: string;
   response: string;
   isListening: boolean;
+  isSpeaking: boolean;
+  isError: boolean;
 }
 
 /**
@@ -34,6 +36,7 @@ export interface VoiceContextActions {
   startListening: () => Promise<boolean>;
   stopListening: () => Promise<boolean>;
   resetState: () => void;
+  interruptSpeech: () => Promise<boolean>;
 }
 
 /**

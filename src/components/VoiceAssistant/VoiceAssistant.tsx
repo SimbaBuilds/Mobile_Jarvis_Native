@@ -24,8 +24,8 @@ export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({
     isSpeaking,
     recognizedText,
     voiceState,
-    isInitializing,
-    error
+    isReady,
+    isError
   } = useVoiceRecognition({
     onResult: (text) => {
       if (text) {
@@ -52,7 +52,7 @@ export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({
     }
   }, [isListening, isSpeaking]);
 
-  if (isInitializing) {
+  if (!isReady) {
     return (
       <View style={[styles.container, styles.centerContent]}>
         <ActivityIndicator size="large" color="#007AFF" />
@@ -60,8 +60,8 @@ export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({
     );
   }
 
-  if (error) {
-    throw error; // This will be caught by the error boundary
+  if (isError) {
+    throw isError; // This will be caught by the error boundary
   }
   
   return (
