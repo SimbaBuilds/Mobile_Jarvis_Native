@@ -1,14 +1,13 @@
 ---
-description: Read this rule after modifying native code or dependencies (Java/Kotlin/Swift/Objective-C)
+description: Read this rule after modifying native code or dependencies  (Java/Kotlin/Swift/Objective-C) or when attempting a native build
 globs: 
 alwaysApply: false
 ---
 Note: This is a react native app in expo with kotlin and java native plugins 
 
 If native changes (Java/Kotlin/Swift/Objective-C):
-1. Run source setup-java.sh to set up your JDK environment (only for Android)
-2. Run npx expo run:android (for Android) or npx expo run:ios (for iOS)
-3. Before release to prod to public or store, run npx expo run:android --variant release  (not doing this any time soon though)
+1. Run npx expo run:android (for Android)
+2. Before release to prod to public or store, run npx expo run:android --variant release  (not doing this any time soon though)
 
 Always ask before running any of the above commands as full rebuilds are time intensive.
 

@@ -9,7 +9,6 @@ interface WakeWordAvailabilityResponse {
 interface WakeWordActionResponse {
   success: boolean;
   error?: string;
-  warning?: string;
 }
 
 interface WakeWordStatusResponse {
@@ -43,7 +42,10 @@ const WakeWordModule: WakeWordModuleInterface = Platform.OS === 'android'
     };
 
 // Create an event emitter for the module
-const wakeWordEmitter = new NativeEventEmitter(NativeModules.WakeWordModule);
+const wakeWordEmitter = new NativeEventEmitter(
+  // Handle the case where the module might not be available
+  Platform.OS === 'android' ? NativeModules.WakeWordModule : null
+);
 
 /**
  * Provides access to wake word detection functionality
@@ -91,7 +93,7 @@ class WakeWordService {
       };
     }
   }
-  
+
   /**
    * Get the current wake word detection status
    */
@@ -108,26 +110,24 @@ class WakeWordService {
   /**
    * Set the Picovoice access key
    */
-  static async setAccessKey(accessKey: string): Promise<WakeWordActionResponse> {
+  static async setAccessKey(accessKey: string): Promise<boolean> {
     try {
-      return await WakeWordModule.setAccessKey(accessKey);
+      const result = await WakeWordModule.setAccessKey(accessKey);
+      return result.success;
     } catch (error) {
       console.error('Error setting access key:', error);
-      return {
-        success: false,
-        error: `Failed to set access key: ${error}`,
-      };
+      return false;
     }
   }
 
   /**
-   * Add listener for wake word events
+   * Add a listener for wake word events
    */
   static addListener(
-    eventName: string,
+    eventType: string,
     listener: (event: any) => void
   ): EmitterSubscription {
-    return wakeWordEmitter.addListener(eventName, listener);
+    return wakeWordEmitter.addListener(eventType, listener);
   }
 }
 
