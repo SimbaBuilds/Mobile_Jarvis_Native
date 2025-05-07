@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
-import { VoiceState, VoiceContextValue } from '../../../types/voice';
+import { VoiceState, VoiceContextValue } from '../types/voice';
+import VoiceService from '../VoiceService';
 
 // Create context with default values
 const VoiceContext = createContext<VoiceContextValue>({
@@ -157,5 +158,13 @@ export const useVoiceState = (): VoiceContextValue => {
     throw new Error('useVoiceState must be used within a VoiceProvider');
   }
   
+  return context;
+};
+
+export const useVoice = () => {
+  const context = useContext(VoiceContext);
+  if (!context) {
+    throw new Error('useVoice must be used within a VoiceProvider');
+  }
   return context;
 };

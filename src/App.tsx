@@ -4,10 +4,10 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { VoiceProvider } from './features/voice/context/VoiceContext';
-import { VoiceErrorBoundary } from './components/ErrorBoundary/VoiceErrorBoundary';
-import { VoiceAssistant } from './components/VoiceAssistant/VoiceAssistant';
+import { VoiceErrorBoundary } from './shared/components/ErrorBoundary/VoiceErrorBoundary';
+import { VoiceAssistant } from './shared/components/VoiceAssistant/VoiceAssistant';
 import { WakeWordToggle } from './features/voice/components/WakeWordToggle';
-import { usePermissions } from './hooks/usePermissions';
+import { usePermissions } from './features/settings/hooks/usePermissions';
 import { Ionicons } from '@expo/vector-icons';
 
 type RootStackParamList = {

@@ -5,7 +5,7 @@ import {
   checkMicrophonePermission, 
   requestBatteryOptimizationExemption, 
   requestMicrophonePermission 
-} from '../utils/permissions';
+} from '../types/permissions';
 import { PermissionsService } from '../services/NativeModules/PermissionsService';
 
 /**

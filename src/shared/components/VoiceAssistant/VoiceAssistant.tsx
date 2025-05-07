@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { VoiceButton } from './VoiceButton';
 import { VoiceResponseDisplay } from './VoiceResponseDisplay';
-import { useVoiceRecognition } from '../../features/voice/hooks/useVoiceRecognition';
-import { VoiceStatusIndicator } from '../../features/voice/components/VoiceStatusIndicator';
+import { useVoiceRecognition } from '../../../features/voice/hooks/useVoiceRecognition';
+import { VoiceStatusIndicator } from '../../../features/voice/components/VoiceStatusIndicator';
 
 interface VoiceAssistantProps {
   onSpeechResult?: (text: string) => void;

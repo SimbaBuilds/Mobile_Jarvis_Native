@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useVoiceState } from '../context/VoiceContext';
-import { VoiceState } from '../../../types/voice';
+import { VoiceState } from '../types/voice';
 
 /**
  * Component that displays the current voice assistant state

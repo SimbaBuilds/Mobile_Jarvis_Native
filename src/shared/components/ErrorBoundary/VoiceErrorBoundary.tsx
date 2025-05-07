@@ -13,34 +13,31 @@ interface State {
 export class VoiceErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false,
-    error: null
+    error: null,
   };
 
-  static getDerivedStateFromError(error: Error): State {
+  public static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Voice feature error:', error, errorInfo);
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('Voice error:', error, errorInfo);
   }
 
-  handleRetry = () => {
+  private handleRetry = () => {
     this.setState({ hasError: false, error: null });
   };
 
-  render() {
+  public render() {
     if (this.state.hasError) {
       return (
         <View style={styles.container}>
-          <Text style={styles.errorTitle}>Voice Assistant Error</Text>
-          <Text style={styles.errorMessage}>
-            {this.state.error?.message || 'An error occurred with the voice assistant.'}
+          <Text style={styles.title}>Voice Assistant Error</Text>
+          <Text style={styles.message}>
+            {this.state.error?.message || 'An unexpected error occurred'}
           </Text>
-          <TouchableOpacity 
-            style={styles.retryButton}
-            onPress={this.handleRetry}
-          >
-            <Text style={styles.retryText}>Retry</Text>
+          <TouchableOpacity style={styles.button} onPress={this.handleRetry}>
+            <Text style={styles.buttonText}>Retry</Text>
           </TouchableOpacity>
         </View>
       );
@@ -53,29 +50,30 @@ export class VoiceErrorBoundary extends Component<Props, State> {
 const styles = StyleSheet.create({
   container: {
     padding: 16,
-    backgroundColor: '#fff3f3',
+    backgroundColor: '#1E1E1E',
     borderRadius: 8,
-    margin: 16,
-  },
-  errorTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#cc0000',
-    marginBottom: 8,
-  },
-  errorMessage: {
-    fontSize: 14,
-    color: '#333',
-    marginBottom: 16,
-  },
-  retryButton: {
-    backgroundColor: '#007AFF',
-    padding: 12,
-    borderRadius: 6,
     alignItems: 'center',
   },
-  retryText: {
-    color: '#fff',
+  title: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+  message: {
+    color: '#B0B0B0',
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  button: {
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
+  },
+  buttonText: {
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '500',
   },

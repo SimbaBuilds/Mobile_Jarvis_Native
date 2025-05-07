@@ -2,10 +2,17 @@ import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, Platform, ActivityIndicator } from 'react-native';
 import { VoiceProvider } from './src/features/voice/context/VoiceContext';
 import { WakeWordToggle } from './src/features/voice/components/WakeWordToggle';
-import { usePermissions } from './src/hooks/usePermissions';
-import { VoiceAssistant } from './src/components/VoiceAssistant/VoiceAssistant';
-import { VoiceErrorBoundary } from './src/components/ErrorBoundary/VoiceErrorBoundary';
-import WakeWordService from './src/services/NativeModules/WakeWordService';
+import { usePermissions } from './src/features/settings/hooks/usePermissions';
+import { VoiceAssistant } from './src/shared/components/VoiceAssistant/VoiceAssistant';
+import { VoiceErrorBoundary } from './src/shared/components/ErrorBoundary/VoiceErrorBoundary';
+import WakeWordService from './src/features/wakeword/services/WakeWordService';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { WakeWordProvider } from './src/features/wakeword/context/WakeWordContext';
+import { HomeScreen } from './src/screens/HomeScreen';
+import { SettingsScreen } from './src/screens/SettingsScreen';
+
+const Stack = createNativeStackNavigator();
 
 const PermissionsSection = () => {
   const {
@@ -72,7 +79,7 @@ export default function App() {
     const initializeApp = async () => {
       try {
         // Check if wake word detection is available
-        const isAvailable = await WakeWordService.isAvailable();
+        const isAvailable = await WakeWordService.getInstance().isWakeWordEnabled();
         console.log(`Wake word detection available: ${isAvailable}`);
       } catch (error) {
         console.error('Error initializing app:', error);
@@ -83,43 +90,16 @@ export default function App() {
   }, []);
 
   return (
-    <VoiceProvider>
-      <SafeAreaView style={styles.container}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Voice Assistant</Text>
-            <Text style={styles.subtitle}>Say "Jarvis" to activate</Text>
-          </View>
-          
-          <PermissionsSection />
-          
-          <View style={styles.settingsSection}>
-            <Text style={styles.sectionTitle}>Settings</Text>
-            <WakeWordToggle label="Wake Word Detection (Jarvis)" />
-          </View>
-
-          <VoiceErrorBoundary>
-            <View style={styles.voiceAssistantContainer}>
-              <VoiceAssistant onSpeechResult={(text) => console.log('Speech recognized:', text)} />
-            </View>
-          </VoiceErrorBoundary>
-          
-          <View style={styles.infoSection}>
-            <Text style={styles.infoText}>
-              This app uses wake word detection to listen for "Jarvis" in the background.
-              When detected, the app will activate voice recognition automatically.
-            </Text>
-            {Platform.OS === 'android' && (
-              <Text style={styles.infoText}>
-                Note: On Android, a service runs in the background with a notification while
-                wake word detection is active. Your wake word preference will be remembered
-                between app sessions.
-              </Text>
-            )}
-          </View>
-        </ScrollView>
-      </SafeAreaView>
-    </VoiceProvider>
+    <NavigationContainer>
+      <VoiceProvider>
+        <WakeWordProvider>
+          <Stack.Navigator>
+            <Stack.Screen name="Home" component={HomeScreen} />
+            <Stack.Screen name="Settings" component={SettingsScreen} />
+          </Stack.Navigator>
+        </WakeWordProvider>
+      </VoiceProvider>
+    </NavigationContainer>
   );
 }
 

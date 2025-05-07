@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 import { PermissionsService } from '../services/NativeModules/PermissionsService';
-import { PermissionResult, PermissionStatus, PermissionType } from '../types/permissions';
+import { PermissionResult, PermissionStatus, PermissionType } from './permissions';
 
 /**
  * Utility functions for working with permissions
