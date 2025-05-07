@@ -5,10 +5,55 @@ import android.util.Log
 import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.anonymous.MobileJarvisNative.MainActivity
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.IntentFilter
 
 class WakeWordModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
     private val TAG = "WakeWordModule"
     private var isServiceRunning = false
+    private var wakeWordReceiver: BroadcastReceiver? = null
+    
+    init {
+        // Register broadcast receiver for wake word detection
+        registerWakeWordReceiver()
+    }
+    
+    private fun registerWakeWordReceiver() {
+        if (wakeWordReceiver == null) {
+            wakeWordReceiver = object : BroadcastReceiver() {
+                override fun onReceive(context: Context, intent: Intent) {
+                    if (intent.action == "com.anonymous.MobileJarvisNative.WAKE_WORD_DETECTED_RN") {
+                        Log.d(TAG, "Received wake word broadcast in React Native module")
+                        
+                        // Send event to JavaScript
+                        val params = Arguments.createMap()
+                        params.putDouble("timestamp", System.currentTimeMillis().toDouble())
+                        sendEvent("wakeWordDetected", params)
+                    }
+                }
+            }
+            
+            val intentFilter = IntentFilter("com.anonymous.MobileJarvisNative.WAKE_WORD_DETECTED_RN")
+            reactApplicationContext.registerReceiver(wakeWordReceiver, intentFilter)
+            Log.d(TAG, "Registered wake word broadcast receiver")
+        }
+    }
+    
+    override fun onCatalystInstanceDestroy() {
+        super.onCatalystInstanceDestroy()
+        
+        // Unregister broadcast receiver
+        if (wakeWordReceiver != null) {
+            try {
+                reactApplicationContext.unregisterReceiver(wakeWordReceiver)
+                wakeWordReceiver = null
+                Log.d(TAG, "Unregistered wake word broadcast receiver")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error unregistering wake word receiver: ${e.message}", e)
+            }
+        }
+    }
     
     override fun getName(): String {
         return "WakeWordModule"

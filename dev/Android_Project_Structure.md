@@ -4,39 +4,23 @@ android/app/src/main/
 ├── java/
 │   └── com/
 │       └── anonymous/
-│           └── mobilejarvisnative/
-│               ├── MainApplication.java
-│               ├── modules/
-│               │   ├── auth/
-│               │   │   ├── components/
-│               │   │   ├── utils/
-│               │   │   ├── services/
-│               │   │   └── models/
-│               │   ├── voice/
-│               │   │   ├── components/
-│               │   │   ├── utils/
-│               │   │   ├── services/
-│               │   │   └── models/
-│               │   ├── wakeword/
-│               │   │   ├── components/
-│               │   │   ├── utils/
-│               │   │   ├── services/
-│               │   │   └── models/
-│               │   ├── home/
-│               │   │   ├── components/
-│               │   │   ├── utils/
-│               │   │   ├── services/
-│               │   │   └── models/
-│               │   └── settings/
-│               │       ├── components/
-│               │       ├── utils/
-│               │       ├── services/
-│               │       └── models/
+│           └── MobileJarvisNative/
+│               ├── MainActivity.kt
+│               ├── MainApplication.kt
+│               ├── ConfigManager.kt
+│               ├── voice/
+│               │   ├── VoiceManager.kt
+│               │   └── VoiceProcessor.kt
+│               ├── wakeword/
+│               │   ├── WakeWordService.kt
+│               │   ├── WakeWordModule.kt
+│               │   └── WakeWordPackage.kt
 │               └── utils/
-│                   ├── common/
-│                   ├── network/
-│                   ├── storage/
-│                   └── helpers/
+│                   ├── SpeechUtils.kt
+│                   ├── Constants.kt
+│                   ├── ServiceUtils.kt
+│                   ├── TextToSpeechManager.kt
+│                   └── PermissionUtils.kt
 ├── res/
 │   ├── layout/
 │   ├── values/

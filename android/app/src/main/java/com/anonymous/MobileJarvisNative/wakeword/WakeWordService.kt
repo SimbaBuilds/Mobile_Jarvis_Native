@@ -276,6 +276,17 @@ class WakeWordService : Service() {
             val intent = Intent("com.anonymous.MobileJarvisNative.WAKE_WORD_DETECTED")
             intent.putExtra("timestamp", timestamp)
             sendBroadcast(intent)
+            
+            // Also notify React Native side via broadcast
+            try {
+                val context = applicationContext
+                val reactIntent = Intent("com.anonymous.MobileJarvisNative.WAKE_WORD_DETECTED_RN")
+                reactIntent.setPackage(context.packageName)
+                context.sendBroadcast(reactIntent)
+                Log.d(TAG, "Sent wake word detection broadcast to React Native")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error sending wake word broadcast to React Native: ${e.message}", e)
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error handling wake word detection: ${e.message}", e)
         }
