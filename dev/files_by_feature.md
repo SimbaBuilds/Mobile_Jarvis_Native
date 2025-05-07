@@ -48,7 +48,6 @@ This document maps each feature to its associated Kotlin native modules and Reac
 - `android/app/src/main/java/com/cameronhightower/mobilejarvisnative/modules/permissions/PermissionsPackage.kt`: Package registration for React Native
 - `android/app/src/main/java/com/cameronhightower/mobilejarvisnative/utils/PermissionUtils.kt`: Utility functions for handling permissions
 - `android/app/src/main/java/com/cameronhightower/mobilejarvisnative/utils/Constants.kt`: Constants for permission request codes
-- `android/app/src/main/java/com/cameronhightower/mobilejarvisnative/utils/UIUtils.kt`: UI utility functions for permissions
 
 ### React Native Files
 - `src/services/NativeModules/PermissionsService.ts`: TypeScript interface for the native module

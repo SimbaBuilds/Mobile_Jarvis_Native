@@ -20,7 +20,7 @@ import android.content.pm.ServiceInfo
 import android.content.SharedPreferences
 import com.anonymous.MobileJarvisNative.MainActivity
 import com.anonymous.MobileJarvisNative.utils.PermissionUtils
-import com.cameronhightower.mobilejarvisnative.modules.voice.VoiceProcessor
+import com.anonymous.MobileJarvisNative.modules.voice.VoiceProcessor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

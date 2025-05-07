@@ -5,8 +5,8 @@ alwaysApply: false
 ---
 Note: This is a react native app in expo with kotlin and java native plugins 
 
-If native changes (Java/Kotlin/Swift/Objective-C):
-1. Run npx expo run:android (for Android)
+Native Build (Java/Kotlin/Swift/Objective-C):
+1. (Default)Run npx expo run:android (for Android) or use ./gradlew :app:compileDebugKotlin for a surface level (dependecy check) debug 
 2. Before release to prod to public or store, run npx expo run:android --variant release  (not doing this any time soon though)
 
 Always ask before running any of the above commands as full rebuilds are time intensive.

@@ -1,11 +1,11 @@
-package com.cameronhightower.aivoiceassistant.utils
+package com.anonymous.MobileJarvisNative.utils
 
 /**
  * Application-wide constants
  */
 object Constants {
     // Wake word constants
-    const val WAKE_WORD_ACTION = "com.cameronhightower.aivoiceassistant.WAKE_WORD_DETECTED"
+    const val WAKE_WORD_ACTION = "com.anonymous.MobileJarvisNative.WAKE_WORD_DETECTED"
     
     // Notification constants
     const val NOTIFICATION_CHANNEL_ID = "voice_assistant_channel"
