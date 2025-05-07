@@ -1,4 +1,3 @@
-@ -1,91 +0,0 @@
 package com.anonymous.MobileJarvisNative.wakeword
 
 import android.content.Intent

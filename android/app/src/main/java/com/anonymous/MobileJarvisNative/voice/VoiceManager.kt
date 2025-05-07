@@ -3,8 +3,12 @@ package com.anonymous.MobileJarvisNative.voice
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
 import android.util.Log
-import com.anonymous.MobileJarvisNative.utils.SpeechRecognitionManager
+import android.content.Intent
+import android.os.Bundle
 import com.anonymous.MobileJarvisNative.utils.TextToSpeechManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -43,13 +47,21 @@ class VoiceManager private constructor(private val context: Context) {
     private val WAKE_WORD_DEBOUNCE_MS = 5000L
     private var lastProcessedText: String = ""
     private var noSpeechRetryCount = 0
-    private const val MAX_NO_SPEECH_RETRIES = 2
+    
+    // Speech Recognition properties
+    private var speechRecognizer: SpeechRecognizer? = null
+    private var isListening = false
+    private var lastRecognitionStartTime = 0L
+    private var speechRecognitionRetryCount = 0
     
     // Callback registry
     private val stateChangeCallbacks = mutableListOf<(VoiceState) -> Unit>()
     
     // Tool handlers
     private val toolHandlers = mutableMapOf<String, (JSONObject) -> String>()
+    
+    // Coroutine scope
+    private val coroutineScope = CoroutineScope(Dispatchers.Main)
     
     init {
         // Create default processor (Modular)
@@ -62,8 +74,8 @@ class VoiceManager private constructor(private val context: Context) {
     fun initialize() {
         Log.i(TAG, "Initializing VoiceManager services")
         
-        // Initialize SpeechRecognitionManager
-        isSpeechRecognitionInitialized = SpeechRecognitionManager.initialize(context)
+        // Initialize speech recognition
+        initializeSpeechRecognition()
         Log.d(TAG, "Speech recognition initialized: $isSpeechRecognitionInitialized")
         
         // Initialize voice processor
@@ -77,6 +89,25 @@ class VoiceManager private constructor(private val context: Context) {
             } catch (e: Exception) {
                 Log.e(TAG, "Error pre-initializing Vapi processor", e)
             }
+        }
+    }
+    
+    /**
+     * Initialize speech recognition
+     */
+    private fun initializeSpeechRecognition() {
+        try {
+            if (SpeechRecognizer.isRecognitionAvailable(context)) {
+                speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context)
+                isSpeechRecognitionInitialized = true
+                Log.d(TAG, "Speech recognizer initialized")
+            } else {
+                Log.e(TAG, "Speech recognition not available on this device")
+                isSpeechRecognitionInitialized = false
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error initializing speech recognizer", e)
+            isSpeechRecognitionInitialized = false
         }
     }
     
@@ -115,8 +146,7 @@ class VoiceManager private constructor(private val context: Context) {
      */
     fun onWakeWordDetected(timestamp: Long): Boolean {
         // Debounce wake word detection
-        val lastWakeWordTime = lastWakeWordTimestamp
-        if (lastWakeWordTime != null && timestamp - lastWakeWordTime < WAKE_WORD_DEBOUNCE_MS) {
+        if (timestamp - lastWakeWordTimestamp < WAKE_WORD_DEBOUNCE_MS) {
             Log.d(TAG, "Ignoring duplicate wake word detection")
             return false
         }
@@ -130,8 +160,10 @@ class VoiceManager private constructor(private val context: Context) {
             _voiceState.value = VoiceState.WAKE_WORD_DETECTED
             
             // Start the appropriate voice processor
-            val processor = getVoiceProcessor()
-            processor.startListening()
+            val processor = voiceProcessor
+            
+            // Start listening for speech
+            startListening()
             
             return true
         } catch (e: Exception) {
@@ -148,19 +180,139 @@ class VoiceManager private constructor(private val context: Context) {
     fun startListening() {
         Log.i(TAG, "Starting speech recognition")
         
+        // Check if already listening or if it's too soon
+        if (isListening) {
+            Log.d(TAG, "Already listening, ignoring start request")
+            return
+        }
+        
+        val now = System.currentTimeMillis()
+        if (now - lastRecognitionStartTime < RECOGNITION_DEBOUNCE_MS) {
+            Log.d(TAG, "Ignoring start request due to debounce period")
+            return
+        }
+        lastRecognitionStartTime = now
+        
         // Update state to LISTENING
         updateState(VoiceState.LISTENING)
         
-        // Use SpeechRecognitionManager to start listening
+        // Create recognition intent
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
+            putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, context.packageName)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 500)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 3000)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 3000)
+        }
+        
         try {
-            SpeechRecognitionManager.setupRecognitionListener { recognizedText ->
-                onSpeechRecognized(recognizedText)
-            }
-            
-            SpeechRecognitionManager.startListening(context)
+            speechRecognizer?.setRecognitionListener(createRecognitionListener())
+            speechRecognizer?.startListening(intent)
+            isListening = true
         } catch (e: Exception) {
             Log.e(TAG, "Error starting speech recognition", e)
             _voiceState.value = VoiceState.ERROR("Failed to start speech recognition: ${e.message}")
+            isListening = false
+        }
+    }
+    
+    /**
+     * Create a RecognitionListener instance
+     */
+    private fun createRecognitionListener(): RecognitionListener {
+        return object : RecognitionListener {
+            override fun onReadyForSpeech(params: Bundle?) {
+                Log.d(TAG, "Ready for speech")
+                isListening = true
+                speechRecognitionRetryCount = 0 // Reset retry count on successful start
+            }
+            
+            override fun onBeginningOfSpeech() {
+                Log.d(TAG, "Beginning of speech")
+            }
+            
+            override fun onRmsChanged(rmsdB: Float) {
+                // Not used
+            }
+            
+            override fun onBufferReceived(buffer: ByteArray?) {
+                // Not used
+            }
+            
+            override fun onEndOfSpeech() {
+                Log.d(TAG, "End of speech")
+                isListening = false
+            }
+            
+            override fun onError(error: Int) {
+                val errorMessage = getSpeechRecognitionErrorMessage(error)
+                Log.e(TAG, "Speech recognition error: $errorMessage")
+                
+                // Reset state flags
+                isListening = false
+                
+                // Handle permission error by retrying
+                if (error == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS && 
+                   speechRecognitionRetryCount < MAX_SPEECH_RECOGNITION_RETRY_COUNT) {
+                    speechRecognitionRetryCount++
+                    Log.w(TAG, "Permission error, will retry speech recognition (attempt $speechRecognitionRetryCount)")
+                    
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        startListening()
+                    }, 1000)
+                    return
+                }
+                
+                // Special handling for "No speech detected" errors
+                if (error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT) {
+                    handleNoSpeechDetected()
+                    return
+                }
+                
+                // Otherwise update state to error
+                _voiceState.value = VoiceState.ERROR("Speech recognition error: $errorMessage")
+            }
+            
+            override fun onResults(results: Bundle?) {
+                isListening = false
+                
+                val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                val text = matches?.get(0) ?: ""
+                
+                if (text.isNotBlank()) {
+                    onSpeechRecognized(text)
+                } else {
+                    handleNoSpeechDetected()
+                }
+            }
+            
+            override fun onPartialResults(partialResults: Bundle?) {
+                // Not used in this implementation
+            }
+            
+            override fun onEvent(eventType: Int, params: Bundle?) {
+                // Not used in this implementation
+            }
+        }
+    }
+    
+    /**
+     * Get a string description of speech recognition error code
+     */
+    private fun getSpeechRecognitionErrorMessage(errorCode: Int): String {
+        return when (errorCode) {
+            SpeechRecognizer.ERROR_AUDIO -> "Audio recording error"
+            SpeechRecognizer.ERROR_CLIENT -> "Client side error"
+            SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Insufficient permissions"
+            SpeechRecognizer.ERROR_NETWORK -> "Network error"
+            SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network timeout"
+            SpeechRecognizer.ERROR_NO_MATCH -> "No recognition match"
+            SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Recognition service busy"
+            SpeechRecognizer.ERROR_SERVER -> "Server error"
+            SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "No speech input"
+            else -> "Unknown error $errorCode"
         }
     }
     
@@ -252,16 +404,6 @@ class VoiceManager private constructor(private val context: Context) {
             Log.e(TAG, "Error interrupting voice processor speech", e)
         }
         
-        // If using fallback mode, also try to interrupt the fallback TTS
-        if (!interrupted && (voiceProcessor is ModularVoiceProcessor)) {
-            try {
-                interrupted = com.anonymous.MobileJarvisNative.agent.modular_voice.FallbackManager.getInstance().interruptSpeech()
-                Log.d(TAG, "Fallback TTS interrupt result: $interrupted")
-            } catch (e: Exception) {
-                Log.e(TAG, "Error interrupting fallback TTS", e)
-            }
-        }
-        
         // Also use TextToSpeechManager as a fallback option
         if (!interrupted) {
             try {
@@ -334,6 +476,29 @@ class VoiceManager private constructor(private val context: Context) {
     }
     
     /**
+     * Display an error message
+     */
+    private fun showError(message: String) {
+        Log.e(TAG, "Error: $message")
+        _voiceState.value = VoiceState.ERROR(message)
+    }
+    
+    /**
+     * Display a message to the user
+     */
+    private fun showMessage(message: String) {
+        Log.i(TAG, "Message: $message")
+        _voiceState.value = VoiceState.RESPONDING(message)
+    }
+    
+    /**
+     * Reset to idle state
+     */
+    private fun resetToIdle() {
+        updateState(VoiceState.IDLE)
+    }
+    
+    /**
      * Clean up resources
      */
     fun shutdown() {
@@ -351,7 +516,8 @@ class VoiceManager private constructor(private val context: Context) {
         
         // Clean up speech recognition
         try {
-            SpeechRecognitionManager.destroy()
+            speechRecognizer?.destroy()
+            speechRecognizer = null
         } catch (e: Exception) {
             Log.e(TAG, "Error destroying speech recognition", e)
         }
@@ -382,8 +548,7 @@ class VoiceManager private constructor(private val context: Context) {
                 
                 try {
                     Log.d(TAG, "Retrying speech recognition (attempt $noSpeechRetryCount)")
-                    val processor = getVoiceProcessor()
-                    processor.startListening()
+                    startListening()
                 } catch (e: Exception) {
                     Log.e(TAG, "Error retrying speech recognition: ${e.message}", e)
                     showError("Unable to restart voice recognition")
@@ -413,6 +578,11 @@ class VoiceManager private constructor(private val context: Context) {
     
     companion object {
         private var instance: VoiceManager? = null
+        
+        // Constants moved to companion object
+        const val MAX_NO_SPEECH_RETRIES = 2
+        const val RECOGNITION_DEBOUNCE_MS = 1000L
+        const val MAX_SPEECH_RECOGNITION_RETRY_COUNT = 3
         
         fun init(context: Context) {
             if (instance == null) {

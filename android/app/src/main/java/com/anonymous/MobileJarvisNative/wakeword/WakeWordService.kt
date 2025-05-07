@@ -20,12 +20,11 @@ import android.content.pm.ServiceInfo
 import android.content.SharedPreferences
 import com.anonymous.MobileJarvisNative.MainActivity
 import com.anonymous.MobileJarvisNative.utils.PermissionUtils
-import com.anonymous.MobileJarvisNative.modules.voice.VoiceProcessor
+import com.anonymous.MobileJarvisNative.voice.VoiceManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.io.InputStream
 import java.util.Properties
@@ -40,8 +39,12 @@ class WakeWordService : Service() {
     private var isRunning = false
     private var serviceScope = CoroutineScope(Dispatchers.Main)
     private var stateMonitorJob: Job? = null
-    private lateinit var voiceProcessor: VoiceProcessor
+    private lateinit var voiceManager: VoiceManager
     private lateinit var prefs: SharedPreferences
+    
+    // Notification constants
+    private val NOTIFICATION_CHANNEL_ID = "wake_word_channel"
+    private val NOTIFICATION_ID = 1001
     
     override fun onCreate() {
         try {
@@ -77,9 +80,8 @@ class WakeWordService : Service() {
                 return
             }
             
-            // Initialize voice processor
-            voiceProcessor = VoiceProcessor()
-            voiceProcessor.initialize(this)
+            // Initialize voice manager
+            voiceManager = VoiceManager.getInstance()
             
             // Set up voice state monitoring
             setupVoiceStateMonitoring()
@@ -105,11 +107,16 @@ class WakeWordService : Service() {
         
         stateMonitorJob = serviceScope.launch {
             try {
-                // Monitor voice processor state
-                if (voiceProcessor.isProcessing() || voiceProcessor.isSpeaking()) {
-                    pauseWakeWordDetection()
-                } else {
-                    resumeWakeWordDetection()
+                // Check voice state every second
+                while (true) {
+                    delay(1000)
+                    
+                    val currentState = voiceManager.voiceState.value
+                    if (currentState !is VoiceManager.VoiceState.IDLE) {
+                        pauseWakeWordDetection()
+                    } else {
+                        resumeWakeWordDetection()
+                    }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error in voice state monitoring", e)
@@ -199,127 +206,141 @@ class WakeWordService : Service() {
                 Log.e(TAG, "Access key is empty")
                 Toast.makeText(
                     this, 
-                    "Picovoice access key is not set", 
+                    "Picovoice access key not found. Wake word detection disabled.", 
                     Toast.LENGTH_LONG
                 ).show()
                 stopSelf()
                 return
             }
-
+            
+            // Keyword callback
+            val porcupineCallback = object : PorcupineManagerCallback {
+                override fun invoke(keywordIndex: Int) {
+                    try {
+                        onWakeWordDetected(keywordIndex)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error in wake word callback: ${e.message}", e)
+                    }
+                }
+            }
+            
+            // Define keywords - for now just use "Jarvis"
+            val keywords = arrayOf(Porcupine.BuiltInKeyword.JARVIS)
+            
+            // Sensitivity (0.0-1.0), higher means more sensitive but more false positives
+            val sensitivities = floatArrayOf(0.7f)
+            
             try {
-                Log.d(TAG, "Initializing PorcupineManager")
+                // Initialize porcupine manager
                 porcupineManager = PorcupineManager.Builder()
                     .setAccessKey(accessKey)
-                    .setKeyword(Porcupine.BuiltInKeyword.JARVIS)
-                    .setSensitivity(0.7f)
-                    .build(this, wakeWordCallback)
-
-                Log.d(TAG, "PorcupineManager initialized successfully")
-                Toast.makeText(this, "Wake word detection initialized", Toast.LENGTH_SHORT).show()
-
+                    .setKeywords(keywords)
+                    .setSensitivities(sensitivities)
+                    .build(this, porcupineCallback)
+                
+                // Start listening for wake word
                 porcupineManager?.start()
                 isRunning = true
-                Log.i(TAG, "Wake word detection started")
-                Toast.makeText(this, "Now listening for 'Jarvis'", Toast.LENGTH_SHORT).show()
+                
+                Log.i(TAG, "Wake word detection started successfully")
             } catch (e: PorcupineActivationException) {
-                handlePorcupineError("Failed to initialize Porcupine: ${e.message}", e)
-            } catch (e: Exception) {
-                handlePorcupineError("Error initializing wake word detection: ${e.message}", e)
+                Log.e(TAG, "Porcupine activation error: ${e.message}", e)
+                Toast.makeText(
+                    this, 
+                    "Invalid Picovoice access key. Wake word detection disabled.", 
+                    Toast.LENGTH_LONG
+                ).show()
+                stopSelf()
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Unexpected error in initWakeWordDetection: ${e.message}", e)
-            Toast.makeText(this, "Unexpected error: ${e.message}", Toast.LENGTH_LONG).show()
+            Log.e(TAG, "Error initializing wake word detection: ${e.message}", e)
+            Toast.makeText(
+                this, 
+                "Error setting up wake word detection: ${e.message}", 
+                Toast.LENGTH_LONG
+            ).show()
             stopSelf()
         }
     }
     
-    private fun handlePorcupineError(message: String, error: Exception) {
-        Log.e(TAG, message, error)
-        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
-        stopSelf()
-    }
-    
-    private val wakeWordCallback = PorcupineManagerCallback { keywordIndex ->
+    private fun onWakeWordDetected(keywordIndex: Int) {
+        Log.i(TAG, "Wake word detected! Keyword index: $keywordIndex")
+        
         try {
-            Log.i(TAG, "Wake word 'Jarvis' detected!")
+            val timestamp = System.currentTimeMillis()
             
-            // Start voice recognition
-            voiceProcessor.startListening()
+            // Trigger voice manager
+            voiceManager.onWakeWordDetected(timestamp)
             
-            // Bring application to foreground
-            val intent = Intent(this, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                putExtra("WAKE_WORD_ACTIVATED", true)
-            }
-            startActivity(intent)
-            
-            Toast.makeText(this, "Jarvis activated! Listening...", Toast.LENGTH_SHORT).show()
+            // Send broadcast for optional UI update
+            val intent = Intent("com.anonymous.MobileJarvisNative.WAKE_WORD_DETECTED")
+            intent.putExtra("timestamp", timestamp)
+            sendBroadcast(intent)
         } catch (e: Exception) {
-            Log.e(TAG, "Error in wake word callback: ${e.message}", e)
+            Log.e(TAG, "Error handling wake word detection: ${e.message}", e)
         }
     }
     
     private fun createNotificationChannel() {
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val channel = NotificationChannel(
-                    CHANNEL_ID,
-                    "Wake Word Detection",
-                    NotificationManager.IMPORTANCE_LOW
-                ).apply {
-                    description = "Background service for wake word detection"
-                    setShowBadge(false)
-                }
-                
-                val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-                notificationManager.createNotificationChannel(channel)
-                Log.d(TAG, "Notification channel created")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                NOTIFICATION_CHANNEL_ID,
+                "Wake Word Detection",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Used for wake word detection service"
+                enableLights(false)
+                enableVibration(false)
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error creating notification channel: ${e.message}", e)
+            
+            val notificationManager = getSystemService(NotificationManager::class.java)
+            notificationManager.createNotificationChannel(channel)
         }
     }
     
     private fun createNotification(): Notification {
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Voice Assistant")
+        val builder = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+            .setContentTitle("Wake Word Detection Active")
             .setContentText("Listening for 'Jarvis'")
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(android.R.drawable.ic_media_play)
             .setPriority(NotificationCompat.PRIORITY_LOW)
-            .build()
+            .setOngoing(true)
+        
+        return builder.build()
     }
-
+    
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.i(TAG, "Service onStartCommand called")
-        
-        if (!isRunning) {
-            initWakeWordDetection()
-        }
-        
         return START_STICKY
     }
     
     override fun onDestroy() {
-        Log.i(TAG, "Service onDestroy called")
-        Toast.makeText(this, "Stopping Jarvis detection", Toast.LENGTH_SHORT).show()
-        try {
-            isRunning = false
-            stateMonitorJob?.cancel()
-            porcupineManager?.stop()
-            porcupineManager?.delete()
-            porcupineManager = null
-            voiceProcessor.release()
-        } catch (e: Exception) {
-            Log.e(TAG, "Error cleaning up wake word detection: ${e.message}", e)
-        }
-        Log.i(TAG, "Wake word detection service stopped")
         super.onDestroy()
+        Log.i(TAG, "Service onDestroy called")
+        
+        try {
+            stateMonitorJob?.cancel()
+            
+            // Stop wake word detection
+            if (porcupineManager != null) {
+                try {
+                    porcupineManager?.stop()
+                    porcupineManager?.delete()
+                    porcupineManager = null
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error stopping porcupine manager: ${e.message}", e)
+                }
+            }
+            
+            isRunning = false
+            
+            Log.i(TAG, "Wake word detection service stopped")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in onDestroy: ${e.message}", e)
+        }
     }
     
-    override fun onBind(intent: Intent?): IBinder? = null
-    
-    companion object {
-        private const val CHANNEL_ID = "wake_word_channel"
-        private const val NOTIFICATION_ID = 1
+    override fun onBind(intent: Intent?): IBinder? {
+        return null
     }
 } 
