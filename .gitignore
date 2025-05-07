@@ -36,4 +36,4 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-src/android/app/src/main/assets/config.properties
+android/app/src/main/assets/config.properties
