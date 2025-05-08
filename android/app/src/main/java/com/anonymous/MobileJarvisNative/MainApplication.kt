@@ -20,6 +20,8 @@ import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ReactNativeHostWrapper
 
 import com.anonymous.MobileJarvisNative.wakeword.WakeWordPackage
+import com.anonymous.MobileJarvisNative.voice.VoicePackage
+import com.anonymous.MobileJarvisNative.permissions.PermissionsPackage
 
 class MainApplication : Application(), ReactApplication {
 
@@ -30,6 +32,8 @@ class MainApplication : Application(), ReactApplication {
             val packages = PackageList(this).packages
             // Packages that cannot be autolinked yet can be added manually here
             packages.add(WakeWordPackage())
+            packages.add(VoicePackage())
+            packages.add(PermissionsPackage())
             return packages
           }
 

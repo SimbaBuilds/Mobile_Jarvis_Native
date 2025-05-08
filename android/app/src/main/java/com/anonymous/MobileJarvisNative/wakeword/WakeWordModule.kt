@@ -68,6 +68,24 @@ class WakeWordModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
         return "WakeWordModule"
     }
     
+    override fun getConstants(): Map<String, Any> {
+        val constants = HashMap<String, Any>()
+        constants["WAKE_WORD_DETECTED"] = "wakeWordDetected"
+        return constants
+    }
+    
+    @ReactMethod
+    fun addListener(eventName: String) {
+        // Required for RN event emitter
+        Log.d(TAG, "Added listener for $eventName")
+    }
+
+    @ReactMethod
+    fun removeListeners(count: Int) {
+        // Required for RN event emitter
+        Log.d(TAG, "Removed $count listener(s)")
+    }
+    
     /**
      * Check if wake word detection is available on this device
      */

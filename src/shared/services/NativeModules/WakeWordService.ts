@@ -54,7 +54,7 @@ const WakeWordModule: WakeWordModuleInterface = nativeWakeWordModule
     };
 
 // Create an event emitter for the module
-const wakeWordEmitter = nativeWakeWordModule 
+const eventEmitter = nativeWakeWordModule 
   ? new NativeEventEmitter(nativeWakeWordModule)
   : null;
 
@@ -63,6 +63,36 @@ const wakeWordEmitter = nativeWakeWordModule
  */
 class WakeWordService {
   private static instance: WakeWordService | null = null;
+  private static eventSubscription: EmitterSubscription | null = null;
+
+  constructor() {
+    // Initialize event listener if emitter is available
+    if (eventEmitter && !WakeWordService.eventSubscription) {
+      WakeWordService.eventSubscription = eventEmitter.addListener(
+        'wakeWordDetected',
+        (event) => {
+          console.log('Wake word detected:', event);
+          // Handle wake word detection event
+          this.handleWakeWordDetected(event);
+        }
+      );
+    }
+  }
+
+  private handleWakeWordDetected(event: any) {
+    // Implement your wake word detection handling logic here
+    console.log('Wake word detected at timestamp:', event.timestamp);
+  }
+
+  /**
+   * Clean up event subscription
+   */
+  static cleanup() {
+    if (WakeWordService.eventSubscription) {
+      WakeWordService.eventSubscription.remove();
+      WakeWordService.eventSubscription = null;
+    }
+  }
 
   /**
    * Get singleton instance (for compatibility with old code)
@@ -243,11 +273,11 @@ class WakeWordService {
     eventType: string,
     listener: (event: any) => void
   ): EmitterSubscription | null {
-    if (!wakeWordEmitter) {
+    if (!eventEmitter) {
       console.warn('WakeWordEmitter is not available, cannot add listener');
       return null;
     }
-    return wakeWordEmitter.addListener(eventType, listener);
+    return eventEmitter.addListener(eventType, listener);
   }
 }
 
