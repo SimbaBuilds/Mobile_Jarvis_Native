@@ -44,7 +44,6 @@ class VoiceManager private constructor() {
     
     // State tracking
     private var lastWakeWordTimestamp = 0L
-    private val WAKE_WORD_DEBOUNCE_MS = 5000L
     private var lastProcessedText: String = ""
     private var noSpeechRetryCount = 0
     
@@ -169,25 +168,21 @@ class VoiceManager private constructor() {
     
     /**
      * Called when the wake word is detected.
-     * Returns true if the wake word detection was processed (not a duplicate).
+     * Returns true if the wake word detection was processed.
      */
     fun onWakeWordDetected(timestamp: Long): Boolean {
-        // Debounce wake word detection
-        if (timestamp - lastWakeWordTimestamp < WAKE_WORD_DEBOUNCE_MS) {
-            Log.d(TAG, "Ignoring duplicate wake word detection")
+        // Only process wake word if we're in IDLE state
+        if (_voiceState.value !is VoiceState.IDLE) {
+            Log.d(TAG, "Ignoring wake word detection - conversation already in progress")
             return false
         }
         
         lastWakeWordTimestamp = timestamp
-        
         Log.i(TAG, "Wake word detected, starting voice processor...")
         
         try {
-            // Update state
-            _voiceState.value = VoiceState.WAKE_WORD_DETECTED
-            
-            // Start the appropriate voice processor
-            val processor = voiceProcessor
+            // Update state - this will automatically pause wake word detection
+            updateState(VoiceState.WAKE_WORD_DETECTED)
             
             // Start listening for speech
             startListening()
@@ -480,6 +475,32 @@ class VoiceManager private constructor() {
     private fun updateState(newState: VoiceState) {
         Log.d(TAG, "Updating voice state from ${_voiceState.value.javaClass.simpleName} to ${newState.javaClass.simpleName}")
         _voiceState.value = newState
+        
+        // Manage wake word detection based on state
+        when (newState) {
+            is VoiceState.IDLE -> {
+                // Only re-enable wake word detection when returning to IDLE
+                Log.d(TAG, "Conversation completed, re-enabling wake word detection")
+                try {
+                    voiceProcessor.start()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error re-enabling wake word detection", e)
+                }
+            }
+            is VoiceState.WAKE_WORD_DETECTED,
+            is VoiceState.LISTENING,
+            is VoiceState.PROCESSING,
+            is VoiceState.RESPONDING,
+            is VoiceState.ERROR -> {
+                // Ensure wake word detection is paused during active conversation
+                Log.d(TAG, "Active conversation state, pausing wake word detection")
+                try {
+                    voiceProcessor.stop()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error pausing wake word detection", e)
+                }
+            }
+        }
         
         // Notify all registered callbacks
         for (callback in stateChangeCallbacks) {

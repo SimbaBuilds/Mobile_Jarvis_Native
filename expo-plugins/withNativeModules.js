@@ -59,9 +59,9 @@ import com.anonymous.MobileJarvisNative.permissions.PermissionsPackage`;
           `val packages = PackageList(this).packages
             // Packages that cannot be autolinked yet can be added manually here
             packages.add(WakeWordPackage())
-            // Add other packages as needed (uncomment as appropriate)
-            // packages.add(VoicePackage())
-            // packages.add(PermissionsPackage())
+            // Add other packages as needed
+            packages.add(VoicePackage())
+            packages.add(PermissionsPackage())
             return packages`
         );
       }

@@ -18,7 +18,7 @@ interface WakeWordStatusResponse {
 // Define the interface for the native module
 interface WakeWordModuleInterface {
   isAvailable(): Promise<WakeWordAvailabilityResponse>;
-  startDetection(): Promise<WakeWordActionResponse>;
+  startDetection(serviceClass?: string): Promise<WakeWordActionResponse>;
   stopDetection(): Promise<WakeWordActionResponse>;
   getStatus(): Promise<WakeWordStatusResponse>;
   setAccessKey(accessKey: string): Promise<WakeWordActionResponse>;
@@ -64,6 +64,9 @@ const eventEmitter = nativeWakeWordModule
 class WakeWordService {
   private static instance: WakeWordService | null = null;
   private static eventSubscription: EmitterSubscription | null = null;
+
+  // Define the correct fully qualified service class name
+  private static ANDROID_SERVICE_CLASS = 'com.anonymous.MobileJarvisNative.wakeword.WakeWordService';
 
   constructor() {
     // Initialize event listener if emitter is available
@@ -135,7 +138,8 @@ class WakeWordService {
   async setWakeWordEnabled(enabled: boolean): Promise<boolean> {
     try {
       if (enabled) {
-        const result = await WakeWordModule.startDetection();
+        // Pass the correct service class name
+        const result = await WakeWordModule.startDetection(WakeWordService.ANDROID_SERVICE_CLASS);
         return result.success;
       } else {
         const result = await WakeWordModule.stopDetection();
@@ -151,15 +155,21 @@ class WakeWordService {
    * For compatibility with older implementation
    */
   async startWakeWordDetection(): Promise<boolean> {
-    const result = await WakeWordService.startDetection();
-    return result.success;
+    try {
+      // Pass the service class explicitly
+      const result = await WakeWordModule.startDetection(WakeWordService.ANDROID_SERVICE_CLASS);
+      return result.success;
+    } catch (error) {
+      console.error('Error starting wake word detection:', error);
+      return false;
+    }
   }
 
   /**
    * For compatibility with older implementation
    */
   async stopWakeWordDetection(): Promise<boolean> {
-    const result = await WakeWordService.stopDetection();
+    const result = await WakeWordModule.stopDetection();
     return result.success;
   }
 
@@ -198,22 +208,18 @@ class WakeWordService {
           error: 'WakeWordModule is not available on this platform',
         };
       }
-      
-      console.log('Calling startDetection() on WakeWordModule');
-      const result = await WakeWordModule.startDetection();
+
+      console.log('Calling startDetection() on WakeWordModule with service class:', WakeWordService.ANDROID_SERVICE_CLASS);
+      // Explicitly pass the service class name to the native module
+      const result = await WakeWordModule.startDetection(WakeWordService.ANDROID_SERVICE_CLASS);
       console.log('startDetection result:', result);
-      
-      // Save enabled state to shared preferences
-      if (result.success) {
-        console.log('Wake word detection started successfully');
-      }
       
       return result;
     } catch (error) {
       console.error('Error starting wake word detection:', error);
       return {
         success: false,
-        error: `Failed to start wake word detection: ${error}`,
+        error: String(error),
       };
     }
   }

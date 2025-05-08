@@ -107,13 +107,16 @@ class WakeWordModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
      * Start wake word detection service
      */
     @ReactMethod
-    fun startDetection(promise: Promise) {
+    fun startDetection(serviceClass: String, promise: Promise) {
         try {
             val prefs = reactApplicationContext.getSharedPreferences("wakeword_prefs", Context.MODE_PRIVATE)
             
+            // Set wake word enabled state FIRST
+            prefs.edit().putBoolean("wake_word_enabled", true).apply()
+            Log.d(TAG, "Set wake_word_enabled preference to true")
+            
             if (isServiceRunning) {
                 Log.d(TAG, "Service already running, updating state only")
-                prefs.edit().putBoolean("wake_word_enabled", true).apply()
                 val result = Arguments.createMap()
                 result.putBoolean("success", true)
                 result.putString("message", "Service already running")
@@ -121,26 +124,56 @@ class WakeWordModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
                 return
             }
 
-            Log.d(TAG, "Starting wake word service...")
+            Log.d(TAG, "Starting wake word service with class: $serviceClass")
             val context = reactApplicationContext
-            val intent = Intent(context, WakeWordService::class.java)
             
-            // Set wake word enabled state
-            prefs.edit().putBoolean("wake_word_enabled", true).apply()
-            
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
+            // Create intent with the provided service class
+            val intent = try {
+                val serviceClazz = Class.forName(serviceClass)
+                Intent(context, serviceClazz)
+            } catch (e: ClassNotFoundException) {
+                Log.e(TAG, "Service class not found: $serviceClass", e)
+                throw Exception("Service class not found: $serviceClass")
             }
             
-            isServiceRunning = true
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    Log.d(TAG, "Using startForegroundService() for Android O+")
+                    context.startForegroundService(intent)
+                } else {
+                    Log.d(TAG, "Using startService() for pre-Android O")
+                    context.startService(intent)
+                }
+                
+                isServiceRunning = true
+                Log.d(TAG, "Service start command sent successfully")
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "Error starting service: ${e.message}", e)
+                throw e
+            }
             
             val result = Arguments.createMap()
             result.putBoolean("success", true)
             promise.resolve(result)
+            
         } catch (e: Exception) {
             Log.e(TAG, "Error starting wake word detection: ${e.message}", e)
+            promise.reject("START_DETECTION_ERROR", "Failed to start wake word detection: ${e.message}", e)
+        }
+    }
+    
+    /**
+     * Start wake word detection service (backward compatibility method without service class parameter)
+     */
+    @ReactMethod
+    fun startDetection(promise: Promise) {
+        try {
+            // Use the default service class path
+            val defaultServiceClass = "com.anonymous.MobileJarvisNative.wakeword.WakeWordService"
+            startDetection(defaultServiceClass, promise)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in backward compatibility startDetection: ${e.message}", e)
             promise.reject("START_DETECTION_ERROR", "Failed to start wake word detection: ${e.message}", e)
         }
     }

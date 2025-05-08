@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import VoiceService, { VoiceState, VoiceStateChangeEvent } from '../../../shared/services/NativeModules/VoiceService';
+import VoiceService, { VoiceState, VoiceStateChangeEvent } from '../VoiceService';
 
 /**
  * Hook for accessing and managing voice state
@@ -27,16 +27,16 @@ export function useVoiceState() {
   // Set up listener for voice state changes from native module
   useEffect(() => {
     // Get initial state
-    VoiceService.getVoiceState()
+    VoiceService.getInstance().getVoiceState()
       .then((state) => {
         setVoiceState(state as VoiceState);
       })
-      .catch((err) => {
+      .catch((err: Error) => {
         console.error('Error getting voice state:', err);
       });
 
     // Add listener for state changes
-    const unsubscribe = VoiceService.onVoiceStateChange((event: VoiceStateChangeEvent) => {
+    const unsubscribe = VoiceService.getInstance().onVoiceStateChange((event: VoiceStateChangeEvent) => {
       setVoiceState(event.state);
     });
 
@@ -49,7 +49,7 @@ export function useVoiceState() {
   // Functions to control voice state
   const startListening = async () => {
     try {
-      await VoiceService.startListening();
+      await VoiceService.getInstance().startListening();
       return true;
     } catch (error) {
       console.error('Error starting voice recognition:', error);
@@ -59,7 +59,7 @@ export function useVoiceState() {
 
   const stopListening = async () => {
     try {
-      await VoiceService.stopListening();
+      await VoiceService.getInstance().stopListening();
       return true;
     } catch (error) {
       console.error('Error stopping voice recognition:', error);
@@ -69,7 +69,7 @@ export function useVoiceState() {
 
   const interruptSpeech = async () => {
     try {
-      return await VoiceService.interruptSpeech();
+      return await VoiceService.getInstance().interruptSpeech();
     } catch (error) {
       console.error('Error interrupting speech:', error);
       return false;

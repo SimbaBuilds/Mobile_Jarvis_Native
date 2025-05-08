@@ -235,6 +235,7 @@ class WakeWordService : Service() {
             }
             
             val accessKey = getPicovoiceAccessKey()
+            Log.d(TAG, "Initializing Picovoice with access key length: ${accessKey.length}")
             
             if (accessKey.isEmpty()) {
                 Log.e(TAG, "Access key is empty")
@@ -265,6 +266,7 @@ class WakeWordService : Service() {
             val sensitivities = floatArrayOf(0.7f)
             
             try {
+                Log.d(TAG, "Creating PorcupineManager with sensitivity: 0.7f")
                 // Initialize porcupine manager
                 porcupineManager = PorcupineManager.Builder()
                     .setAccessKey(accessKey)
@@ -272,6 +274,7 @@ class WakeWordService : Service() {
                     .setSensitivities(sensitivities)
                     .build(this, porcupineCallback)
                 
+                Log.d(TAG, "Starting PorcupineManager wake word detection")
                 // Start listening for wake word
                 porcupineManager?.start()
                 isRunning = true
@@ -298,7 +301,7 @@ class WakeWordService : Service() {
     }
     
     private fun onWakeWordDetected(keywordIndex: Int) {
-        Log.i(TAG, "Wake word detected! Keyword index: $keywordIndex")
+        Log.d(TAG, "Wake word detected with keyword index: $keywordIndex at time: ${System.currentTimeMillis()}")
         
         try {
             val timestamp = System.currentTimeMillis()
