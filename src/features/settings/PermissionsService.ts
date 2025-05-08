@@ -1,5 +1,5 @@
 import { NativeEventEmitter, NativeModules, Platform } from 'react-native';
-import { PermissionEvent } from '../../../shared/types/permissions';
+import { PermissionEvent } from './permissions';
 
 const { PermissionsModule } = NativeModules;
 

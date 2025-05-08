@@ -1,9 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, SafeAreaView, ActivityIndicator, Platform } from 'react-native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
 import { WakeWordToggle } from '../wakeword/components/WakeWordToggle';
 import { WakeWordStatus } from '../wakeword/components/WakeWordStatus';
 import { usePermissions } from './usePermissions';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 type RootStackParamList = {
   Home: undefined;

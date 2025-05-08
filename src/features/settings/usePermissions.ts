@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
-import { PermissionEvent, PermissionResult, PermissionType } from '../../../shared/types/permissions';
 import { 
+  PermissionEvent, 
+  PermissionResult, 
+  PermissionType,
   checkBatteryOptimization, 
   checkMicrophonePermission, 
   requestBatteryOptimizationExemption, 
   requestMicrophonePermission 
-} from '../types/permissions';
-import { PermissionsService } from '../../../shared/services/NativeModules/PermissionsService';
+} from './permissions';
+import { PermissionsService } from './PermissionsService';
 
 /**
  * Hook for managing permissions in React components
