@@ -55,22 +55,72 @@ class WakeWordService : Service() {
     }
     
     override fun onCreate() {
-        try {
-            if (isServiceRunning) {
-                Log.w(TAG, "Service already running, stopping duplicate service")
-                stopSelf()
-                return
-            }
+        super.onCreate()
+        Log.i(TAG, "Service onCreate called")
+        
+        // First create the notification channel
+        createNotificationChannel()
+        
+        // Start foreground immediately
+        startForegroundWithNotification()
+        
+        // Initialize minimal requirements
+        prefs = getSharedPreferences("wakeword_prefs", Context.MODE_PRIVATE)
+    }
 
-            super.onCreate()
-            Log.i(TAG, "Service onCreate called")
+    /**
+     * Helper method to start foreground service with notification
+     */
+    private fun startForegroundWithNotification() {
+        try {
+            val notification = createNotification()
             
+            // Starting foreground service with type on Android 10+ (API 29+)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+            
+            Log.d(TAG, "Successfully called startForeground() with notification")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error starting foreground: ${e.message}", e)
+        }
+    }
+    
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Log.i(TAG, "Service onStartCommand called")
+        
+        // Start foreground again in case onCreate didn't complete properly
+        startForegroundWithNotification()
+        
+        // Complete initialization in background thread
+        Thread {
+            try {
+                initializeService()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error in service initialization: ${e.message}", e)
+                stopSelf()
+            }
+        }.start()
+        
+        return START_STICKY
+    }
+
+    /**
+     * Initialize the service after it has been started in foreground
+     */
+    private fun initializeService() {
+        if (isServiceRunning) {
+            Log.w(TAG, "Service already running, stopping duplicate service")
+            stopSelf()
+            return
+        }
+        
+        try {
             // Initialize ConfigManager
             ConfigManager.init(this)
             configManager = ConfigManager.getInstance()
-            
-            // Initialize SharedPreferences
-            prefs = getSharedPreferences("wakeword_prefs", Context.MODE_PRIVATE)
             
             // Check if wake word detection is enabled
             if (!isWakeWordEnabled()) {
@@ -82,21 +132,12 @@ class WakeWordService : Service() {
             isServiceRunning = true
             isRunning = true
             
-            createNotificationChannel()
-            
-            // Starting foreground service with type on Android 10+ (API 29+)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                startForeground(NOTIFICATION_ID, createNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
-            } else {
-                startForeground(NOTIFICATION_ID, createNotification())
-            }
-            
             Toast.makeText(this, "Jarvis detection service starting...", Toast.LENGTH_SHORT).show()
             
             // Initialize remaining components
             initializeComponents()
         } catch (e: Exception) {
-            Log.e(TAG, "Fatal error in service onCreate: ${e.message}", e)
+            Log.e(TAG, "Fatal error in service initialization: ${e.message}", e)
             Toast.makeText(this, "Service startup failed: ${e.message}", Toast.LENGTH_LONG).show()
             cleanup()
             stopSelf()
@@ -355,11 +396,6 @@ class WakeWordService : Service() {
             .setOngoing(true)
         
         return builder.build()
-    }
-    
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.i(TAG, "Service onStartCommand called")
-        return START_STICKY
     }
     
     override fun onDestroy() {

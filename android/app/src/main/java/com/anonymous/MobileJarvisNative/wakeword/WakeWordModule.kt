@@ -139,6 +139,13 @@ class WakeWordModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     Log.d(TAG, "Using startForegroundService() for Android O+")
+                    // Add a small delay before starting the service
+                    try {
+                        Log.d(TAG, "Waiting briefly before starting service...")
+                        Thread.sleep(250)
+                    } catch (e: InterruptedException) {
+                        Log.w(TAG, "Sleep interrupted", e)
+                    }
                     context.startForegroundService(intent)
                 } else {
                     Log.d(TAG, "Using startService() for pre-Android O")

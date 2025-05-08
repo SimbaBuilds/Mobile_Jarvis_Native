@@ -140,6 +140,12 @@ class WakeWordService {
       if (enabled) {
         // Pass the correct service class name
         const result = await WakeWordModule.startDetection(WakeWordService.ANDROID_SERVICE_CLASS);
+        
+        // Add a small delay to give the service time to start
+        if (result.success && Platform.OS === 'android') {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        
         return result.success;
       } else {
         const result = await WakeWordModule.stopDetection();
@@ -158,6 +164,12 @@ class WakeWordService {
     try {
       // Pass the service class explicitly
       const result = await WakeWordModule.startDetection(WakeWordService.ANDROID_SERVICE_CLASS);
+      
+      // Add a small delay to give the service time to start
+      if (result.success && Platform.OS === 'android') {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+      
       return result.success;
     } catch (error) {
       console.error('Error starting wake word detection:', error);
@@ -213,6 +225,11 @@ class WakeWordService {
       // Explicitly pass the service class name to the native module
       const result = await WakeWordModule.startDetection(WakeWordService.ANDROID_SERVICE_CLASS);
       console.log('startDetection result:', result);
+      
+      // Add a small delay to give the service time to start
+      if (result.success && Platform.OS === 'android') {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
       
       return result;
     } catch (error) {

@@ -33,5 +33,12 @@
       </intent-filter>
     </activity>
     <activity android:name="com.facebook.react.devsupport.DevSettingsActivity" android:exported="false"/>
+    
+    <!-- Register the WakeWordService -->
+    <service 
+        android:name=".wakeword.WakeWordService" 
+        android:enabled="true"
+        android:exported="false"
+        android:foregroundServiceType="microphone" />
   </application>
 </manifest>
