@@ -107,6 +107,10 @@ class WakeWordModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
             val context = reactApplicationContext
             val intent = Intent(context, WakeWordService::class.java)
             
+            // Set wake word enabled state
+            val prefs = context.getSharedPreferences("wakeword_prefs", Context.MODE_PRIVATE)
+            prefs.edit().putBoolean("wake_word_enabled", true).apply()
+            
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
             } else {
@@ -135,6 +139,11 @@ class WakeWordModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
         try {
             val context = reactApplicationContext
             val intent = Intent(context, WakeWordService::class.java)
+            
+            // Set wake word disabled state
+            val prefs = context.getSharedPreferences("wakeword_prefs", Context.MODE_PRIVATE)
+            prefs.edit().putBoolean("wake_word_enabled", false).apply()
+            
             context.stopService(intent)
             
             isServiceRunning = false

@@ -21,13 +21,12 @@ import android.content.SharedPreferences
 import com.anonymous.MobileJarvisNative.MainActivity
 import com.anonymous.MobileJarvisNative.utils.PermissionUtils
 import com.anonymous.MobileJarvisNative.voice.VoiceManager
+import com.anonymous.MobileJarvisNative.ConfigManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.io.InputStream
-import java.util.Properties
 
 /**
  * Service that listens for the wake word "Jarvis" in the background
@@ -41,6 +40,7 @@ class WakeWordService : Service() {
     private var stateMonitorJob: Job? = null
     private lateinit var voiceManager: VoiceManager
     private lateinit var prefs: SharedPreferences
+    private lateinit var configManager: ConfigManager
     
     // Notification constants
     private val NOTIFICATION_CHANNEL_ID = "wake_word_channel"
@@ -50,6 +50,10 @@ class WakeWordService : Service() {
         try {
             super.onCreate()
             Log.i(TAG, "Service onCreate called")
+            
+            // Initialize ConfigManager
+            ConfigManager.init(this)
+            configManager = ConfigManager.getInstance()
             
             // Initialize SharedPreferences
             prefs = getSharedPreferences("wakeword_prefs", Context.MODE_PRIVATE)
@@ -169,15 +173,7 @@ class WakeWordService : Service() {
     }
     
     private fun getPicovoiceAccessKey(): String {
-        return try {
-            val inputStream: InputStream = assets.open("config.properties")
-            val properties = Properties()
-            properties.load(inputStream)
-            properties.getProperty("picovoice_access_key", "")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error reading config.properties: ${e.message}", e)
-            ""
-        }
+        return configManager.getPicovoiceAccessKey()
     }
     
     private fun initWakeWordDetection() {
