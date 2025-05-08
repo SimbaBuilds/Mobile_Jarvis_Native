@@ -72,13 +72,24 @@ class MainActivity : ReactActivity() {
   ) {
       super.onRequestPermissionsResult(requestCode, permissions, grantResults)
       
-      // Get the permissions module from the ReactInstanceManager
-      val reactNativeHost = (application as ReactApplication).reactNativeHost
-      val catalystInstance = reactNativeHost.reactInstanceManager.currentReactContext
-      
-      if (catalystInstance != null) {
-          val permissionModules = catalystInstance.getNativeModule(PermissionsModule::class.java)
-          permissionModules?.handlePermissionResult(requestCode, permissions, grantResults)
+      try {
+          // Get the permissions module from the ReactInstanceManager
+          val reactNativeHost = (application as ReactApplication).reactNativeHost
+          val catalystInstance = reactNativeHost.reactInstanceManager.currentReactContext
+          
+          if (catalystInstance != null) {
+              val permissionModules = catalystInstance.getNativeModule(PermissionsModule::class.java)
+              if (permissionModules != null) {
+                  permissionModules.handlePermissionResult(requestCode, permissions, grantResults)
+              } else {
+                  // Log error but don't crash if module not found
+                  android.util.Log.e("MainActivity", "PermissionsModule not found when handling permission result")
+              }
+          } else {
+              android.util.Log.e("MainActivity", "ReactContext not available when handling permission result")
+          }
+      } catch (e: Exception) {
+          android.util.Log.e("MainActivity", "Error handling permission result: ${e.message}", e)
       }
   }
 }

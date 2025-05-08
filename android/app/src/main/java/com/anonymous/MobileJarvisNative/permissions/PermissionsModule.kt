@@ -16,12 +16,14 @@ import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
+import com.facebook.react.module.annotations.ReactModule
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.anonymous.MobileJarvisNative.utils.PermissionUtils
 
 /**
  * React Native module for handling permissions
  */
+@ReactModule(name = "PermissionsModule")
 class PermissionsModule(private val reactContext: ReactApplicationContext) 
     : ReactContextBaseJavaModule(reactContext), ActivityEventListener {
     

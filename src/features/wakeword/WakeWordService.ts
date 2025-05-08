@@ -138,6 +138,28 @@ class WakeWordService {
   async setWakeWordEnabled(enabled: boolean): Promise<boolean> {
     try {
       if (enabled) {
+        // Try to ensure permissions are granted first
+        if (Platform.OS === 'android') {
+          try {
+            const { PermissionsService } = require('../settings/PermissionsService');
+            // Check wake word permissions directly using the PermissionsService
+            const hasPermissions = await PermissionsService.checkWakeWordPermissions();
+            
+            if (!hasPermissions) {
+              console.log('Need to request wake word permissions before enabling');
+              const granted = await PermissionsService.requestWakeWordPermissions();
+              
+              if (!granted) {
+                console.error('Permission request denied');
+                throw new Error('Required permissions were denied');
+              }
+            }
+          } catch (permError) {
+            console.error('Error checking/requesting permissions:', permError);
+            // Continue anyway, the native side will handle permission errors
+          }
+        }
+        
         // Pass the correct service class name
         const result = await WakeWordModule.startDetection(WakeWordService.ANDROID_SERVICE_CLASS);
         

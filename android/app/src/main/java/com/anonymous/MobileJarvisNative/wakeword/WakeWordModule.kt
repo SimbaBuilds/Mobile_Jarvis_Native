@@ -34,12 +34,21 @@ class WakeWordModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
             wakeWordReceiver = object : BroadcastReceiver() {
                 override fun onReceive(context: Context, intent: Intent) {
                     if (intent.action == "com.anonymous.MobileJarvisNative.WAKE_WORD_DETECTED_RN") {
-                        Log.d(TAG, "Received wake word broadcast in React Native module")
+                        val timestamp = intent.getLongExtra("timestamp", System.currentTimeMillis())
+                        val timeString = java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.US).format(java.util.Date(timestamp))
+                        
+                        Log.d(TAG, "======================================================")
+                        Log.d(TAG, "👂 RECEIVED WAKE WORD BROADCAST IN RN MODULE! 👂")
+                        Log.d(TAG, "🕒 Time: $timeString")
+                        Log.d(TAG, "======================================================")
                         
                         // Send event to JavaScript
                         val params = Arguments.createMap()
-                        params.putDouble("timestamp", System.currentTimeMillis().toDouble())
+                        params.putDouble("timestamp", timestamp.toDouble())
                         sendEvent("wakeWordDetected", params)
+                        
+                        // Also log to console
+                        Log.i(TAG, "Wake word event sent to React Native")
                     }
                 }
             }
@@ -146,10 +155,9 @@ class WakeWordModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
                     return
                 }
             }
-            
+
+            // Only set wake word enabled state if we have all required permissions
             val prefs = reactApplicationContext.getSharedPreferences("wakeword_prefs", Context.MODE_PRIVATE)
-            
-            // Set wake word enabled state FIRST
             prefs.edit().putBoolean("wake_word_enabled", true).apply()
             Log.d(TAG, "Set wake_word_enabled preference to true")
             

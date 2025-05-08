@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import WakeWordService from './WakeWordService';
+import { Alert } from 'react-native';
+import { checkWakeWordPermissions, requestWakeWordPermissions } from '../settings/permissions';
 
 interface WakeWordContextType {
     isEnabled: boolean;
@@ -111,7 +113,15 @@ export const WakeWordProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // Subscribe to wake word detection events
     useEffect(() => {
         const subscription = WakeWordService.addListener('wakeWordDetected', (event) => {
-            console.log('🎤 Wake word "Jarvis" detected at:', new Date().toLocaleTimeString());
+            const eventTime = event.timestamp ? new Date(event.timestamp) : new Date();
+            const timeString = eventTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+            
+            console.log('\n');
+            console.log('🔊 🔊 🔊 🔊 🔊 🔊 🔊 🔊 🔊 🔊 🔊 �� 🔊 🔊 🔊 🔊 🔊');
+            console.log('🎤 WAKE WORD "JARVIS" DETECTED in React Native! 🎤');
+            console.log(`⏰ Time: ${timeString}`);
+            console.log('🔊 🔊 🔊 🔊 🔊 🔊 🔊 🔊 🔊 🔊 🔊 �� 🔊 🔊 🔊 🔊 🔊');
+            console.log('\n');
             
             // Ensure running state is accurate
             setIsRunning(true);
@@ -133,6 +143,20 @@ export const WakeWordProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const setEnabled = async (enabled: boolean) => {
         try {
             console.log('🔄 Setting wake word enabled:', enabled);
+            
+            if (enabled) {
+                // Check permissions first
+                const permissionsResult = await checkWakeWordPermissions();
+                if (!permissionsResult.granted) {
+                    console.log('📝 Need to request wake word permissions');
+                    const requestResult = await requestWakeWordPermissions();
+                    if (!requestResult.granted) {
+                        console.error('❌ Permission request denied');
+                        throw new Error('Microphone permission is required for wake word detection');
+                    }
+                }
+            }
+            
             const success = await wakeWordService.setWakeWordEnabled(enabled);
             
             if (success) {
@@ -145,7 +169,20 @@ export const WakeWordProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             }
         } catch (error) {
             console.error('❌ Error setting wake word enabled state:', error);
+            
+            // Show user-friendly error message
+            if (error instanceof Error && error.message.includes('permission')) {
+                Alert.alert(
+                    'Permission Required',
+                    'Microphone permission is required for wake word detection. Please enable it in your device settings.',
+                    [
+                        { text: 'OK' }
+                    ]
+                );
+            }
+            
             await syncState(); // Resync state on error
+            throw error; // Re-throw to let parent components handle it
         }
     };
 

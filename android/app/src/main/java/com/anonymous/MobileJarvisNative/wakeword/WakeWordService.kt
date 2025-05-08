@@ -311,6 +311,7 @@ class WakeWordService : Service() {
             val porcupineCallback = object : PorcupineManagerCallback {
                 override fun invoke(keywordIndex: Int) {
                     try {
+                        Log.d(TAG, "🎙️ Raw Porcupine callback received for keyword index: $keywordIndex")
                         onWakeWordDetected(keywordIndex)
                     } catch (e: Exception) {
                         Log.e(TAG, "Error in wake word callback: ${e.message}", e)
@@ -320,12 +321,14 @@ class WakeWordService : Service() {
             
             // Define keywords - for now just use "Jarvis"
             val keywords = arrayOf(Porcupine.BuiltInKeyword.JARVIS)
+            Log.d(TAG, "Setting up with keyword: ${keywords[0].name}")
             
             // Sensitivity (0.0-1.0), higher means more sensitive but more false positives
             val sensitivities = floatArrayOf(0.7f)
+            Log.d(TAG, "Setting sensitivity to: ${sensitivities[0]}")
             
             try {
-                Log.d(TAG, "Creating PorcupineManager with sensitivity: 0.7f")
+                Log.d(TAG, "Creating PorcupineManager...")
                 // Initialize porcupine manager
                 porcupineManager = PorcupineManager.Builder()
                     .setAccessKey(accessKey)
@@ -333,12 +336,19 @@ class WakeWordService : Service() {
                     .setSensitivities(sensitivities)
                     .build(this, porcupineCallback)
                 
-                Log.d(TAG, "Starting PorcupineManager wake word detection")
+                Log.d(TAG, "🚀 PorcupineManager created successfully! Starting detection...")
                 // Start listening for wake word
                 porcupineManager?.start()
                 isRunning = true
                 
-                Log.i(TAG, "Wake word detection started successfully")
+                Log.i(TAG, "✅ Wake word detection started successfully ✅")
+                serviceScope.launch(Dispatchers.Main) {
+                    Toast.makeText(
+                        applicationContext,
+                        "Wake word detection started - listening for 'Jarvis'",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             } catch (e: PorcupineActivationException) {
                 Log.e(TAG, "Porcupine activation error: ${e.message}", e)
                 Toast.makeText(
@@ -360,11 +370,14 @@ class WakeWordService : Service() {
     }
     
     private fun onWakeWordDetected(keywordIndex: Int) {
-        Log.d(TAG, "Wake word detected with keyword index: $keywordIndex at time: ${System.currentTimeMillis()}")
+        val timestamp = System.currentTimeMillis()
+        val timeString = java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.US).format(java.util.Date(timestamp))
+        
+        Log.d(TAG, "-----------------------------------------------------")
+        Log.d(TAG, "🎤 WAKE WORD DETECTED! 🎤 at $timeString (index: $keywordIndex)")
+        Log.d(TAG, "-----------------------------------------------------")
         
         try {
-            val timestamp = System.currentTimeMillis()
-            
             // Trigger voice manager
             voiceManager.onWakeWordDetected(timestamp)
             
@@ -377,11 +390,25 @@ class WakeWordService : Service() {
             try {
                 val context = applicationContext
                 val reactIntent = Intent("com.anonymous.MobileJarvisNative.WAKE_WORD_DETECTED_RN")
+                reactIntent.putExtra("timestamp", timestamp)
                 reactIntent.setPackage(context.packageName)
                 context.sendBroadcast(reactIntent)
                 Log.d(TAG, "Sent wake word detection broadcast to React Native")
             } catch (e: Exception) {
                 Log.e(TAG, "Error sending wake word broadcast to React Native: ${e.message}", e)
+            }
+            
+            // Also show a toast notification for debugging
+            try {
+                serviceScope.launch(Dispatchers.Main) {
+                    Toast.makeText(
+                        applicationContext,
+                        "Wake word 'Jarvis' detected at $timeString",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error showing toast: ${e.message}", e)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error handling wake word detection: ${e.message}", e)
