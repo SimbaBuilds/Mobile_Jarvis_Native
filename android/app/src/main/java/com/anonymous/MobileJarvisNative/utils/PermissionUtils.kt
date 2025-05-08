@@ -1,5 +1,6 @@
 package com.anonymous.MobileJarvisNative.utils
 
+import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
@@ -35,5 +36,15 @@ object PermissionUtils {
             }
         }
         return true
+    }
+
+    /**
+     * Check if the app has audio recording permission
+     * 
+     * @param context Application context
+     * @return True if audio permission is granted, false otherwise
+     */
+    fun hasAudioPermission(context: Context): Boolean {
+        return hasPermission(context, Manifest.permission.RECORD_AUDIO)
     }
 } 

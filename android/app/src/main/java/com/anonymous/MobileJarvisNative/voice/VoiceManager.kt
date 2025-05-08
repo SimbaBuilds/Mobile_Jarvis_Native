@@ -28,7 +28,7 @@ import org.json.JSONObject
  * - Voice processing (Modular or Vapi services)
  * - Text-to-speech output
  */
-class VoiceManager private constructor(private val context: Context) {
+class VoiceManager private constructor() {
     private val TAG = "VoiceManager"
     
     // Voice state management
@@ -39,7 +39,7 @@ class VoiceManager private constructor(private val context: Context) {
     private var isSpeechRecognitionInitialized = false
     
     // Voice processor strategy
-    private var voiceProcessor: VoiceProcessor
+    private lateinit var voiceProcessor: VoiceProcessor
     private var useVapiMode = false
     
     // State tracking
@@ -62,10 +62,37 @@ class VoiceManager private constructor(private val context: Context) {
     
     // Coroutine scope
     private val coroutineScope = CoroutineScope(Dispatchers.Main)
+
+    // Context reference
+    private lateinit var context: Context
     
-    init {
+    companion object {
+        @Volatile
+        private var instance: VoiceManager? = null
+        
+        // Constants
+        const val MAX_NO_SPEECH_RETRIES = 2
+        const val RECOGNITION_DEBOUNCE_MS = 1000L
+        const val MAX_SPEECH_RECOGNITION_RETRY_COUNT = 3
+        
+        fun getInstance(): VoiceManager {
+            return instance ?: synchronized(this) {
+                instance ?: VoiceManager().also { instance = it }
+            }
+        }
+    }
+    
+    /**
+     * Initialize with context
+     */
+    fun initialize(context: Context) {
+        this.context = context
+        
         // Create default processor (Modular)
         voiceProcessor = ModularVoiceProcessor(context)
+        
+        // Initialize services
+        initialize()
     }
     
     /**
@@ -178,43 +205,32 @@ class VoiceManager private constructor(private val context: Context) {
      * Start listening for speech input
      */
     fun startListening() {
-        Log.i(TAG, "Starting speech recognition")
-        
-        // Check if already listening or if it's too soon
+        if (!isListening) {
+            isListening = true
+            _voiceState.value = VoiceState.LISTENING
+            speechRecognizer?.startListening(createRecognizerIntent())
+        }
+    }
+    
+    /**
+     * Stop listening for speech input
+     */
+    fun stopListening() {
         if (isListening) {
-            Log.d(TAG, "Already listening, ignoring start request")
-            return
+            isListening = false
+            _voiceState.value = VoiceState.IDLE
+            speechRecognizer?.stopListening()
         }
-        
-        val now = System.currentTimeMillis()
-        if (now - lastRecognitionStartTime < RECOGNITION_DEBOUNCE_MS) {
-            Log.d(TAG, "Ignoring start request due to debounce period")
-            return
-        }
-        lastRecognitionStartTime = now
-        
-        // Update state to LISTENING
-        updateState(VoiceState.LISTENING)
-        
-        // Create recognition intent
-        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+    }
+    
+    /**
+     * Create speech recognizer intent
+     */
+    private fun createRecognizerIntent(): Intent {
+        return Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
-            putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, context.packageName)
-            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 500)
-            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 3000)
-            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 3000)
-        }
-        
-        try {
-            speechRecognizer?.setRecognitionListener(createRecognitionListener())
-            speechRecognizer?.startListening(intent)
-            isListening = true
-        } catch (e: Exception) {
-            Log.e(TAG, "Error starting speech recognition", e)
-            _voiceState.value = VoiceState.ERROR("Failed to start speech recognition: ${e.message}")
-            isListening = false
+            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
         }
     }
     
@@ -574,28 +590,5 @@ class VoiceManager private constructor(private val context: Context) {
         object PROCESSING : VoiceState()
         data class RESPONDING(val message: String) : VoiceState()
         data class ERROR(val message: String) : VoiceState()
-    }
-    
-    companion object {
-        private var instance: VoiceManager? = null
-        
-        // Constants moved to companion object
-        const val MAX_NO_SPEECH_RETRIES = 2
-        const val RECOGNITION_DEBOUNCE_MS = 1000L
-        const val MAX_SPEECH_RECOGNITION_RETRY_COUNT = 3
-        
-        fun init(context: Context) {
-            if (instance == null) {
-                Log.i("VoiceManager", "Creating new VoiceManager instance")
-                instance = VoiceManager(context.applicationContext)
-                instance?.initialize()
-            }
-        }
-        
-        fun getInstance(): VoiceManager {
-            return instance ?: throw IllegalStateException(
-                "VoiceManager not initialized. Call init() first."
-            )
-        }
     }
 } 

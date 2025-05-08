@@ -17,8 +17,12 @@ import kotlinx.coroutines.launch
  */
 class VoiceModule(private val reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
     private val TAG = "VoiceModule"
-    private val voiceManager = VoiceManager.getInstance(reactContext)
+    private val voiceManager = VoiceManager.getInstance()
     private val coroutineScope = CoroutineScope(Dispatchers.Main)
+
+    init {
+        voiceManager.initialize(reactContext)
+    }
 
     override fun getName(): String {
         return "VoiceModule"
@@ -75,8 +79,8 @@ class VoiceModule(private val reactContext: ReactApplicationContext) : ReactCont
     @ReactMethod
     fun getVoiceState(promise: Promise) {
         try {
-            val state = voiceManager.voiceState.value.name
-            promise.resolve(state)
+            val state = voiceManager.voiceState.value
+            promise.resolve(state.toString())
         } catch (e: Exception) {
             Log.e(TAG, "Error getting voice state", e)
             promise.reject("ERR_VOICE_STATE", e.message, e)
@@ -111,7 +115,7 @@ class VoiceModule(private val reactContext: ReactApplicationContext) : ReactCont
         voiceManager.voiceState
             .onEach { state ->
                 // Send the state update to JS
-                sendEvent("onVoiceStateChange", mapOf("state" to state.name))
+                sendEvent("onVoiceStateChange", mapOf("state" to state.toString()))
             }
             .launchIn(coroutineScope)
     }
