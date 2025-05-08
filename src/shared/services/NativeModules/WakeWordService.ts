@@ -80,8 +80,18 @@ class WakeWordService {
   }
 
   private handleWakeWordDetected(event: any) {
-    // Implement your wake word detection handling logic here
-    console.log('Wake word detected at timestamp:', event.timestamp);
+    const timestamp = event.timestamp || Date.now();
+    const timeString = new Date(timestamp).toLocaleTimeString();
+    
+    // Log the detection with emoji for visibility
+    console.log('🎤 Wake word detected!');
+    console.log(`⏰ Timestamp: ${timeString}`);
+    console.log(`📍 Confidence: ${event.confidence || 'N/A'}`);
+    
+    // Additional debug information if available
+    if (event.debug) {
+      console.log('🔍 Debug info:', event.debug);
+    }
   }
 
   /**

@@ -18,6 +18,11 @@ class WakeWordModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
     init {
         // Register broadcast receiver for wake word detection
         registerWakeWordReceiver()
+        
+        // Log initial state
+        val prefs = reactApplicationContext.getSharedPreferences("wakeword_prefs", Context.MODE_PRIVATE)
+        val initialState = prefs.getBoolean("wake_word_enabled", false)
+        Log.i(TAG, "WakeWordModule initialized with state: enabled=$initialState")
     }
     
     private fun registerWakeWordReceiver() {
@@ -104,14 +109,26 @@ class WakeWordModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
     @ReactMethod
     fun startDetection(promise: Promise) {
         try {
+            val prefs = reactApplicationContext.getSharedPreferences("wakeword_prefs", Context.MODE_PRIVATE)
+            
+            if (isServiceRunning) {
+                Log.d(TAG, "Service already running, updating state only")
+                prefs.edit().putBoolean("wake_word_enabled", true).apply()
+                val result = Arguments.createMap()
+                result.putBoolean("success", true)
+                result.putString("message", "Service already running")
+                promise.resolve(result)
+                return
+            }
+
+            Log.d(TAG, "Starting wake word service...")
             val context = reactApplicationContext
             val intent = Intent(context, WakeWordService::class.java)
             
             // Set wake word enabled state
-            val prefs = context.getSharedPreferences("wakeword_prefs", Context.MODE_PRIVATE)
             prefs.edit().putBoolean("wake_word_enabled", true).apply()
             
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
             } else {
                 context.startService(intent)
@@ -124,10 +141,7 @@ class WakeWordModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
             promise.resolve(result)
         } catch (e: Exception) {
             Log.e(TAG, "Error starting wake word detection: ${e.message}", e)
-            val result = Arguments.createMap()
-            result.putBoolean("success", false)
-            result.putString("error", "Failed to start wake word detection: ${e.message}")
-            promise.resolve(result)
+            promise.reject("START_DETECTION_ERROR", "Failed to start wake word detection: ${e.message}", e)
         }
     }
     
@@ -137,6 +151,14 @@ class WakeWordModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
     @ReactMethod
     fun stopDetection(promise: Promise) {
         try {
+            if (!isServiceRunning) {
+                val result = Arguments.createMap()
+                result.putBoolean("success", true)
+                result.putString("message", "Service not running")
+                promise.resolve(result)
+                return
+            }
+
             val context = reactApplicationContext
             val intent = Intent(context, WakeWordService::class.java)
             
@@ -145,7 +167,6 @@ class WakeWordModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
             prefs.edit().putBoolean("wake_word_enabled", false).apply()
             
             context.stopService(intent)
-            
             isServiceRunning = false
             
             val result = Arguments.createMap()
@@ -153,10 +174,7 @@ class WakeWordModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
             promise.resolve(result)
         } catch (e: Exception) {
             Log.e(TAG, "Error stopping wake word detection: ${e.message}", e)
-            val result = Arguments.createMap()
-            result.putBoolean("success", false)
-            result.putString("error", "Failed to stop wake word detection: ${e.message}")
-            promise.resolve(result)
+            promise.reject("STOP_DETECTION_ERROR", "Failed to stop wake word detection: ${e.message}", e)
         }
     }
     
@@ -166,17 +184,28 @@ class WakeWordModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
     @ReactMethod
     fun getStatus(promise: Promise) {
         try {
-            val prefs = reactApplicationContext.getSharedPreferences("wakeword_prefs", android.content.Context.MODE_PRIVATE)
+            val prefs = reactApplicationContext.getSharedPreferences("wakeword_prefs", Context.MODE_PRIVATE)
             val enabled = prefs.getBoolean("wake_word_enabled", false)
+            val serviceRunning = WakeWordService.isRunning()
+            
+            Log.d(TAG, "Current wake word state: enabled=$enabled, serviceRunning=$serviceRunning")
+            
+            // If the service is running but enabled is false, or vice versa, fix the inconsistency
+            if (enabled != serviceRunning) {
+                Log.w(TAG, "Detected state inconsistency, fixing...")
+                prefs.edit().putBoolean("wake_word_enabled", serviceRunning).apply()
+                val result = Arguments.createMap()
+                result.putBoolean("enabled", serviceRunning)
+                promise.resolve(result)
+                return
+            }
             
             val result = Arguments.createMap()
             result.putBoolean("enabled", enabled)
             promise.resolve(result)
         } catch (e: Exception) {
             Log.e(TAG, "Error getting wake word status: ${e.message}", e)
-            val result = Arguments.createMap()
-            result.putBoolean("enabled", false)
-            promise.resolve(result)
+            promise.reject("GET_STATUS_ERROR", "Failed to get wake word status: ${e.message}", e)
         }
     }
     
@@ -186,7 +215,12 @@ class WakeWordModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
     @ReactMethod
     fun setAccessKey(accessKey: String, promise: Promise) {
         try {
-            val prefs = reactApplicationContext.getSharedPreferences("picovoice_prefs", android.content.Context.MODE_PRIVATE)
+            if (accessKey.isBlank()) {
+                promise.reject("INVALID_KEY", "Access key cannot be empty")
+                return
+            }
+
+            val prefs = reactApplicationContext.getSharedPreferences("picovoice_prefs", Context.MODE_PRIVATE)
             prefs.edit().putString("picovoice_access_key", accessKey).apply()
             
             val result = Arguments.createMap()
@@ -194,10 +228,7 @@ class WakeWordModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
             promise.resolve(result)
         } catch (e: Exception) {
             Log.e(TAG, "Error setting access key: ${e.message}", e)
-            val result = Arguments.createMap()
-            result.putBoolean("success", false)
-            result.putString("error", "Failed to set access key: ${e.message}")
-            promise.resolve(result)
+            promise.reject("SET_KEY_ERROR", "Failed to set access key: ${e.message}", e)
         }
     }
     

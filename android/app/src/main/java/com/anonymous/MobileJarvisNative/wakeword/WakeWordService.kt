@@ -45,9 +45,23 @@ class WakeWordService : Service() {
     // Notification constants
     private val NOTIFICATION_CHANNEL_ID = "wake_word_channel"
     private val NOTIFICATION_ID = 1001
+
+    companion object {
+        private var isServiceRunning = false
+
+        fun isRunning(): Boolean {
+            return isServiceRunning
+        }
+    }
     
     override fun onCreate() {
         try {
+            if (isServiceRunning) {
+                Log.w(TAG, "Service already running, stopping duplicate service")
+                stopSelf()
+                return
+            }
+
             super.onCreate()
             Log.i(TAG, "Service onCreate called")
             
@@ -64,6 +78,9 @@ class WakeWordService : Service() {
                 stopSelf()
                 return
             }
+
+            isServiceRunning = true
+            isRunning = true
             
             createNotificationChannel()
             
@@ -76,10 +93,23 @@ class WakeWordService : Service() {
             
             Toast.makeText(this, "Jarvis detection service starting...", Toast.LENGTH_SHORT).show()
             
+            // Initialize remaining components
+            initializeComponents()
+        } catch (e: Exception) {
+            Log.e(TAG, "Fatal error in service onCreate: ${e.message}", e)
+            Toast.makeText(this, "Service startup failed: ${e.message}", Toast.LENGTH_LONG).show()
+            cleanup()
+            stopSelf()
+        }
+    }
+
+    private fun initializeComponents() {
+        try {
             // Check if we can access the Porcupine BuiltInKeyword class
             if (!checkPorcupineLibrary()) {
                 Log.e(TAG, "Cannot access Porcupine library classes")
                 Toast.makeText(this, "Porcupine library not properly initialized", Toast.LENGTH_LONG).show()
+                cleanup()
                 stopSelf()
                 return
             }
@@ -91,17 +121,25 @@ class WakeWordService : Service() {
             setupVoiceStateMonitoring()
             
             initWakeWordDetection()
-        } catch (e: UnsatisfiedLinkError) {
-            Log.e(TAG, "Native library error: ${e.message}", e)
-            Toast.makeText(this, "Device compatibility issue: Missing native library", Toast.LENGTH_LONG).show()
-            stopSelf()
         } catch (e: Exception) {
-            Log.e(TAG, "Fatal error in service onCreate: ${e.message}", e)
-            Toast.makeText(this, "Service startup failed: ${e.message}", Toast.LENGTH_LONG).show()
+            Log.e(TAG, "Error initializing components: ${e.message}", e)
+            cleanup()
             stopSelf()
         }
     }
-    
+
+    private fun cleanup() {
+        try {
+            stateMonitorJob?.cancel()
+            porcupineManager?.stop()
+            porcupineManager = null
+            isRunning = false
+            isServiceRunning = false
+        } catch (e: Exception) {
+            Log.e(TAG, "Error during cleanup: ${e.message}", e)
+        }
+    }
+
     private fun isWakeWordEnabled(): Boolean {
         return prefs.getBoolean("wake_word_enabled", false)
     }
@@ -323,28 +361,8 @@ class WakeWordService : Service() {
     
     override fun onDestroy() {
         super.onDestroy()
-        Log.i(TAG, "Service onDestroy called")
-        
-        try {
-            stateMonitorJob?.cancel()
-            
-            // Stop wake word detection
-            if (porcupineManager != null) {
-                try {
-                    porcupineManager?.stop()
-                    porcupineManager?.delete()
-                    porcupineManager = null
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error stopping porcupine manager: ${e.message}", e)
-                }
-            }
-            
-            isRunning = false
-            
-            Log.i(TAG, "Wake word detection service stopped")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error in onDestroy: ${e.message}", e)
-        }
+        cleanup()
+        Log.i(TAG, "Service destroyed")
     }
     
     override fun onBind(intent: Intent?): IBinder? {
