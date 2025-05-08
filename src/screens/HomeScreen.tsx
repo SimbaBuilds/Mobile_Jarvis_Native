@@ -2,8 +2,8 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, SafeAreaView, Platform } from 'react-native';
 import { WakeWordStatus } from '../features/wakeword/components/WakeWordStatus';
 import { WakeWordToggle } from '../features/wakeword/components/WakeWordToggle';
-import { VoiceAssistant } from '../shared/components/VoiceAssistant/VoiceAssistant';
-import { VoiceErrorBoundary } from '../shared/components/ErrorBoundary/VoiceErrorBoundary';
+import { VoiceAssistant } from '../features/voice/components/VoiceAssistant';
+import { VoiceErrorBoundary } from '../features/voice/ErrorBoundary/VoiceErrorBoundary';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 type RootStackParamList = {

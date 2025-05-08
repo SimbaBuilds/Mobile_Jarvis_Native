@@ -108,19 +108,32 @@ class WakeWordService {
    * For compatibility with older implementation
    */
   async isWakeWordEnabled(): Promise<boolean> {
-    return WakeWordService.getStatus();
+    try {
+      console.log('Calling getStatus() on WakeWordModule');
+      const response = await WakeWordModule.getStatus();
+      console.log('getStatus result:', response);
+      return response.enabled;
+    } catch (error) {
+      console.error('Error getting wake word status:', error);
+      return false;
+    }
   }
 
   /**
    * For compatibility with older implementation
    */
   async setWakeWordEnabled(enabled: boolean): Promise<boolean> {
-    if (enabled) {
-      const result = await WakeWordService.startDetection();
-      return result.success;
-    } else {
-      const result = await WakeWordService.stopDetection();
-      return result.success;
+    try {
+      if (enabled) {
+        const result = await WakeWordModule.startDetection();
+        return result.success;
+      } else {
+        const result = await WakeWordModule.stopDetection();
+        return result.success;
+      }
+    } catch (error) {
+      console.error('Error setting wake word enabled state:', error);
+      return false;
     }
   }
 

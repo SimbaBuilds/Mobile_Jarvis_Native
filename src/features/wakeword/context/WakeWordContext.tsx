@@ -28,14 +28,25 @@ export const WakeWordProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const initializeWakeWord = async () => {
             try {
                 const enabled = await wakeWordService.isWakeWordEnabled();
+                console.log('Initial wake word enabled state:', enabled);
                 setIsEnabled(enabled);
                 
                 if (enabled) {
+                    // If enabled, check if it's actually running
                     const running = await wakeWordService.isWakeWordDetectionRunning();
+                    console.log('Initial wake word running state:', running);
                     setIsRunning(running);
+                    
+                    // If enabled but not running, start detection
+                    if (!running) {
+                        await wakeWordService.startWakeWordDetection();
+                        setIsRunning(true);
+                    }
                 }
             } catch (error) {
                 console.error('Error initializing wake word:', error);
+                setIsEnabled(false);
+                setIsRunning(false);
             }
         };
 
@@ -44,11 +55,25 @@ export const WakeWordProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     const setEnabled = async (enabled: boolean) => {
         try {
-            await wakeWordService.setWakeWordEnabled(enabled);
-            setIsEnabled(enabled);
-            setIsRunning(enabled);
+            const success = await wakeWordService.setWakeWordEnabled(enabled);
+            console.log('Set wake word enabled result:', success);
+            
+            if (success) {
+                setIsEnabled(enabled);
+                setIsRunning(enabled);
+            } else {
+                console.error('Failed to set wake word enabled state');
+                // Revert to previous state if operation failed
+                const currentState = await wakeWordService.isWakeWordEnabled();
+                setIsEnabled(currentState);
+                setIsRunning(currentState);
+            }
         } catch (error) {
             console.error('Error setting wake word enabled state:', error);
+            // On error, revert to previous state
+            const currentState = await wakeWordService.isWakeWordEnabled();
+            setIsEnabled(currentState);
+            setIsRunning(currentState);
             throw error;
         }
     };
