@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, Text, TouchableOpacity, SafeAreaView, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
-import LoginForm from '../features/auth/components/LoginForm';
-import { useAuth } from '../features/auth/hooks/useAuth';
+import LoginForm from '../features/auth/LoginForm';
+import { useAuth } from '../features/auth/useAuth';
 
 const LoginPage: React.FC = () => {
   const { login, isLoading, error } = useAuth();

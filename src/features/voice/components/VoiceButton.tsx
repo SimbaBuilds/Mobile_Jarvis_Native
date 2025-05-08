@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
 import { TouchableOpacity, StyleSheet, View, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useVoiceState } from '../context/VoiceContext';
+import { useVoiceState } from '../VoiceContext';
 import { VoiceState } from '../types/voice';
 
 interface VoiceButtonProps {

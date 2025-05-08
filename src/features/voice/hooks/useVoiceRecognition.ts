@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { useVoiceState } from '../context/VoiceContext';
+import { useVoiceState } from '../VoiceContext';
 import { VoiceState } from '../types/voice';
 
 /**

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Alert, Platform, NativeModules } from 'react-native';
-import WakeWordService, { WakeWordEvents } from '../../../shared/services/NativeModules/WakeWordService';
-import { useVoiceState } from '../../voice/hooks/useVoiceState';
+import WakeWordService, { WakeWordEvents } from './WakeWordService';
+import { useVoiceState } from '../voice/hooks/useVoiceState';
 
 /**
  * Hook for wake word detection functionality

@@ -1,11 +1,11 @@
 import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { VoiceProvider } from './src/features/voice/context/VoiceContext';
-import { WakeWordProvider } from './src/features/wakeword/context/WakeWordContext';
-import WakeWordService from './src/shared/services/NativeModules/WakeWordService';
-import { HomeScreen } from './src/screens/HomeScreen';
-import { SettingsScreen } from './src/screens/SettingsScreen';
+import { VoiceProvider } from './src/features/voice/VoiceContext';
+import { WakeWordProvider } from './src/features/wakeword/WakeWordContext';
+import WakeWordService from './src/features/wakeword/WakeWordService';
+import { HomeScreen } from './src/HomeScreen';
+import { SettingsScreen } from './src/features/settings/SettingsScreen';
 import { Ionicons } from '@expo/vector-icons';
 
 type RootStackParamList = {

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
-import { VoiceState, VoiceContextValue } from '../types/voice';
-import VoiceService from '../VoiceService';
+import { VoiceState, VoiceContextValue } from './types/voice';
+import VoiceService from './VoiceService';
 
 // Create context with default values
 const VoiceContext = createContext<VoiceContextValue>({

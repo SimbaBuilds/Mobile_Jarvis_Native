@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Switch, StyleSheet, Platform, Alert } from 'react-native';
-import WakeWordService from '../../../shared/services/NativeModules/WakeWordService';
-import { usePermissions } from '../../settings/hooks/usePermissions';
+import WakeWordService from '../../wakeword/WakeWordService';
+import { usePermissions } from '../../settings/usePermissions';
 
 interface WakeWordToggleProps {
   label: string;

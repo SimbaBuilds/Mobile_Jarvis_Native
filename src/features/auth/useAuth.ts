@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { authService } from '../../../shared/services/authService';
+import { authService } from './authService';
 
 interface UseAuthReturn {
   user: any | null;

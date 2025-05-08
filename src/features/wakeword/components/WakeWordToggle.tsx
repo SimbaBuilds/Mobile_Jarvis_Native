@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Switch, Text, StyleSheet } from 'react-native';
-import { useWakeWord } from '../context/WakeWordContext';
+import { useWakeWord } from '../WakeWordContext';
 
 export const WakeWordToggle: React.FC = () => {
     const { isEnabled, setEnabled } = useWakeWord();

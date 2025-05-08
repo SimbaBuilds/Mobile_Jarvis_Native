@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, SafeAreaView, ActivityIndicator, Platform } from 'react-native';
-import { WakeWordToggle } from '../features/wakeword/components/WakeWordToggle';
-import { WakeWordStatus } from '../features/wakeword/components/WakeWordStatus';
-import { usePermissions } from '../features/settings/hooks/usePermissions';
+import { WakeWordToggle } from '../wakeword/components/WakeWordToggle';
+import { WakeWordStatus } from '../wakeword/components/WakeWordStatus';
+import { usePermissions } from './usePermissions';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 type RootStackParamList = {

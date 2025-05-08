@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { useWakeWord } from '../context/WakeWordContext';
+import { useWakeWord } from '../WakeWordContext';
 
 export const WakeWordStatus: React.FC = () => {
     const { isEnabled, isRunning } = useWakeWord();

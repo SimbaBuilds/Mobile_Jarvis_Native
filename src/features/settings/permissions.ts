@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import { PermissionsService } from '../../../shared/services/NativeModules/PermissionsService';
+import { PermissionsService } from './PermissionsService';
 
 /**
  * Permission event interface for native module events

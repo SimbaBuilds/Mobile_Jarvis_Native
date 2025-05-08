@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
-import { useVoiceState } from '../context/VoiceContext';
+import { useVoiceState } from '../VoiceContext';
 import { VoiceState } from '../types/voice';
 
 /**
