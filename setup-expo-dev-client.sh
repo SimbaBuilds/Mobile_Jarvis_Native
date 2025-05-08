@@ -14,7 +14,7 @@ fi
 # Clean build caches
 echo "🧹 Cleaning up build caches..."
 rm -rf android/app/build
-npx expo prebuild --clean
+npx expo prebuild
 
 # Enable development build
 echo "🔧 Configuring development build..."
