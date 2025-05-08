@@ -9,6 +9,10 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.IntentFilter
 import android.os.Build
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 
 class WakeWordModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
     private val TAG = "WakeWordModule"
@@ -109,6 +113,40 @@ class WakeWordModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
     @ReactMethod
     fun startDetection(serviceClass: String, promise: Promise) {
         try {
+            // First, check if we have required permissions
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                val hasRecordAudioPermission = ContextCompat.checkSelfPermission(
+                    reactApplicationContext, 
+                    Manifest.permission.RECORD_AUDIO
+                ) == PackageManager.PERMISSION_GRANTED
+                
+                val hasForegroundServicePermission = ContextCompat.checkSelfPermission(
+                    reactApplicationContext, 
+                    Manifest.permission.FOREGROUND_SERVICE_MICROPHONE
+                ) == PackageManager.PERMISSION_GRANTED
+                
+                if (!hasRecordAudioPermission || !hasForegroundServicePermission) {
+                    Log.e(TAG, "Missing required permissions for wake word detection")
+                    val errorMessage = "Missing permissions: " + 
+                        (!hasRecordAudioPermission).let { if (it) "RECORD_AUDIO " else "" } +
+                        (!hasForegroundServicePermission).let { if (it) "FOREGROUND_SERVICE_MICROPHONE" else "" }
+                    promise.reject("PERMISSION_DENIED", errorMessage.trim())
+                    return
+                }
+            } else {
+                // For older Android versions, just check RECORD_AUDIO permission
+                val hasRecordAudioPermission = ContextCompat.checkSelfPermission(
+                    reactApplicationContext, 
+                    Manifest.permission.RECORD_AUDIO
+                ) == PackageManager.PERMISSION_GRANTED
+                
+                if (!hasRecordAudioPermission) {
+                    Log.e(TAG, "Missing RECORD_AUDIO permission for wake word detection")
+                    promise.reject("PERMISSION_DENIED", "Missing RECORD_AUDIO permission")
+                    return
+                }
+            }
+            
             val prefs = reactApplicationContext.getSharedPreferences("wakeword_prefs", Context.MODE_PRIVATE)
             
             // Set wake word enabled state FIRST
@@ -139,13 +177,6 @@ class WakeWordModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     Log.d(TAG, "Using startForegroundService() for Android O+")
-                    // Add a small delay before starting the service
-                    try {
-                        Log.d(TAG, "Waiting briefly before starting service...")
-                        Thread.sleep(250)
-                    } catch (e: InterruptedException) {
-                        Log.w(TAG, "Sleep interrupted", e)
-                    }
                     context.startForegroundService(intent)
                 } else {
                     Log.d(TAG, "Using startService() for pre-Android O")

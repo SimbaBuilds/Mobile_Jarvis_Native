@@ -27,6 +27,7 @@ class PermissionsModule(private val reactContext: ReactApplicationContext)
     
     private val TAG = "PermissionsModule"
     private val PERMISSION_AUDIO_REQUEST_CODE = 1001
+    private val PERMISSION_FG_SERVICE_MICROPHONE_REQUEST_CODE = 1002
     
     init {
         reactContext.addActivityEventListener(this)
@@ -142,6 +143,74 @@ class PermissionsModule(private val reactContext: ReactApplicationContext)
     }
     
     /**
+     * Check if the app has all required permissions for wake word detection
+     */
+    @ReactMethod
+    fun checkWakeWordPermissions(promise: Promise) {
+        val hasAudioPermission = PermissionUtils.hasAudioPermission(reactContext)
+        
+        val hasForegroundServicePermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            PermissionUtils.hasPermission(reactContext, Manifest.permission.FOREGROUND_SERVICE_MICROPHONE)
+        } else {
+            true // Not needed before Android 13
+        }
+        
+        promise.resolve(hasAudioPermission && hasForegroundServicePermission)
+    }
+    
+    /**
+     * Request all permissions needed for wake word detection
+     */
+    @ReactMethod
+    fun requestWakeWordPermissions(promise: Promise) {
+        val currentActivity = currentActivity
+        
+        if (currentActivity == null) {
+            Log.e(TAG, "No activity available for permission request")
+            promise.reject("ERR_PERMISSION", "No activity available for permission request")
+            return
+        }
+        
+        // Check if we already have all permissions
+        val hasAudioPermission = PermissionUtils.hasAudioPermission(reactContext)
+        val hasForegroundServicePermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            PermissionUtils.hasPermission(reactContext, Manifest.permission.FOREGROUND_SERVICE_MICROPHONE)
+        } else {
+            true // Not needed before Android 13
+        }
+        
+        if (hasAudioPermission && hasForegroundServicePermission) {
+            // Already have all permissions
+            promise.resolve(true)
+            return
+        }
+        
+        try {
+            val permissionsToRequest = mutableListOf<String>()
+            
+            if (!hasAudioPermission) {
+                permissionsToRequest.add(Manifest.permission.RECORD_AUDIO)
+            }
+            
+            if (!hasForegroundServicePermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                permissionsToRequest.add(Manifest.permission.FOREGROUND_SERVICE_MICROPHONE)
+            }
+            
+            ActivityCompat.requestPermissions(
+                currentActivity,
+                permissionsToRequest.toTypedArray(),
+                PERMISSION_AUDIO_REQUEST_CODE
+            )
+            
+            // Store the promise to resolve later
+            pendingPermissionPromise = promise
+        } catch (e: Exception) {
+            Log.e(TAG, "Error requesting permissions", e)
+            promise.reject("ERR_PERMISSION", e.message, e)
+        }
+    }
+    
+    /**
      * Add an event listener
      */
     @ReactMethod
@@ -183,17 +252,26 @@ class PermissionsModule(private val reactContext: ReactApplicationContext)
     private var pendingPermissionPromise: Promise? = null
     
     fun handlePermissionResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        if (requestCode == PERMISSION_AUDIO_REQUEST_CODE && permissions.isNotEmpty()) {
-            val granted = grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
+        if ((requestCode == PERMISSION_AUDIO_REQUEST_CODE || requestCode == PERMISSION_FG_SERVICE_MICROPHONE_REQUEST_CODE) 
+            && permissions.isNotEmpty()) {
             
-            // Emit event to JS listeners
-            sendEvent("onPermissionResult", mapOf(
-                "permission" to "audio",
-                "granted" to granted
-            ))
+            // Check if all requested permissions were granted
+            var allGranted = true
+            for (i in permissions.indices) {
+                val permission = permissions[i]
+                val granted = grantResults.getOrNull(i) == PackageManager.PERMISSION_GRANTED
+                
+                allGranted = allGranted && granted
+                
+                // Emit event for each permission
+                sendEvent("onPermissionResult", mapOf(
+                    "permission" to permission,
+                    "granted" to granted
+                ))
+            }
             
-            // Resolve the pending promise
-            pendingPermissionPromise?.resolve(granted)
+            // Resolve the pending promise with overall result
+            pendingPermissionPromise?.resolve(allGranted)
             pendingPermissionPromise = null
         }
     }

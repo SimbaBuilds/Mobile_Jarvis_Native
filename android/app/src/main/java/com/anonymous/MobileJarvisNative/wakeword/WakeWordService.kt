@@ -58,14 +58,16 @@ class WakeWordService : Service() {
         super.onCreate()
         Log.i(TAG, "Service onCreate called")
         
+        // Initialize minimal requirements
+        prefs = getSharedPreferences("wakeword_prefs", Context.MODE_PRIVATE)
+        
         // First create the notification channel
         createNotificationChannel()
         
-        // Start foreground immediately
-        startForegroundWithNotification()
-        
-        // Initialize minimal requirements
-        prefs = getSharedPreferences("wakeword_prefs", Context.MODE_PRIVATE)
+        // Start foreground immediately, but on the main thread
+        serviceScope.launch(Dispatchers.Main) {
+            startForegroundWithNotification()
+        }
     }
 
     /**
@@ -91,18 +93,32 @@ class WakeWordService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.i(TAG, "Service onStartCommand called")
         
-        // Start foreground again in case onCreate didn't complete properly
-        startForegroundWithNotification()
-        
-        // Complete initialization in background thread
-        Thread {
+        // Complete initialization on main thread first for any UI operations
+        serviceScope.launch(Dispatchers.Main) {
             try {
-                initializeService()
+                // Try startForeground again in case onCreate failed
+                startForegroundWithNotification()
+                
+                // Show toast on main thread
+                Toast.makeText(this@WakeWordService, "Jarvis detection service starting...", Toast.LENGTH_SHORT).show()
+                
+                // Then initialize the rest in a background thread
+                serviceScope.launch(Dispatchers.IO) {
+                    try {
+                        initializeService()
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error in service initialization: ${e.message}", e)
+                        serviceScope.launch(Dispatchers.Main) {
+                            Toast.makeText(this@WakeWordService, "Service startup failed: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
+                        stopSelf()
+                    }
+                }
             } catch (e: Exception) {
-                Log.e(TAG, "Error in service initialization: ${e.message}", e)
+                Log.e(TAG, "Error in onStartCommand: ${e.message}", e)
                 stopSelf()
             }
-        }.start()
+        }
         
         return START_STICKY
     }
@@ -132,13 +148,13 @@ class WakeWordService : Service() {
             isServiceRunning = true
             isRunning = true
             
-            Toast.makeText(this, "Jarvis detection service starting...", Toast.LENGTH_SHORT).show()
-            
             // Initialize remaining components
             initializeComponents()
         } catch (e: Exception) {
             Log.e(TAG, "Fatal error in service initialization: ${e.message}", e)
-            Toast.makeText(this, "Service startup failed: ${e.message}", Toast.LENGTH_LONG).show()
+            serviceScope.launch(Dispatchers.Main) {
+                Toast.makeText(this@WakeWordService, "Service startup failed: ${e.message}", Toast.LENGTH_LONG).show()
+            }
             cleanup()
             stopSelf()
         }
@@ -149,7 +165,9 @@ class WakeWordService : Service() {
             // Check if we can access the Porcupine BuiltInKeyword class
             if (!checkPorcupineLibrary()) {
                 Log.e(TAG, "Cannot access Porcupine library classes")
-                Toast.makeText(this, "Porcupine library not properly initialized", Toast.LENGTH_LONG).show()
+                serviceScope.launch(Dispatchers.Main) {
+                    Toast.makeText(this@WakeWordService, "Porcupine library not properly initialized", Toast.LENGTH_LONG).show()
+                }
                 cleanup()
                 stopSelf()
                 return

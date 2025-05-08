@@ -11,6 +11,8 @@ interface IPermissionsModule {
   requestAudioPermission(): Promise<boolean>;
   isBatteryOptimizationExempt(): Promise<boolean>;
   requestBatteryOptimizationExemption(): Promise<boolean>;
+  checkWakeWordPermissions(): Promise<boolean>;
+  requestWakeWordPermissions(): Promise<boolean>;
   addListener(eventName: string): void;
   removeListeners(count: number): void;
 }
@@ -21,6 +23,8 @@ const mockPermissionsModule: IPermissionsModule = {
   requestAudioPermission: async () => true,
   isBatteryOptimizationExempt: async () => true,
   requestBatteryOptimizationExemption: async () => true,
+  checkWakeWordPermissions: async () => false,
+  requestWakeWordPermissions: async () => false,
   addListener: () => {},
   removeListeners: () => {},
 };
@@ -85,6 +89,34 @@ export const PermissionsService = {
       return await module.requestBatteryOptimizationExemption();
     } catch (error) {
       console.error('Error requesting battery optimization exemption:', error);
+      return false;
+    }
+  },
+
+  /**
+   * Check if the app has all necessary permissions for wake word detection
+   */
+  checkWakeWordPermissions: async (): Promise<boolean> => {
+    if (Platform.OS !== 'android') return false;
+    
+    try {
+      return await module.checkWakeWordPermissions();
+    } catch (error) {
+      console.error('Error checking wake word permissions:', error);
+      return false;
+    }
+  },
+
+  /**
+   * Request all permissions needed for wake word detection (RECORD_AUDIO and FOREGROUND_SERVICE_MICROPHONE)
+   */
+  requestWakeWordPermissions: async (): Promise<boolean> => {
+    if (Platform.OS !== 'android') return false;
+    
+    try {
+      return await module.requestWakeWordPermissions();
+    } catch (error) {
+      console.error('Error requesting wake word permissions:', error);
       return false;
     }
   },

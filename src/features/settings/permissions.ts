@@ -24,6 +24,7 @@ export enum PermissionStatus {
 export enum PermissionType {
   MICROPHONE = 'microphone',
   BATTERY_OPTIMIZATION = 'battery_optimization',
+  WAKE_WORD = 'wake_word',
 }
 
 /**
@@ -146,6 +147,68 @@ export const requestBatteryOptimizationExemption = async (): Promise<PermissionR
       granted: false,
       status: PermissionStatus.UNAVAILABLE,
       permission: PermissionType.BATTERY_OPTIMIZATION
+    };
+  }
+};
+
+/**
+ * Check if the app has all required permissions for wake word detection
+ * 
+ * @returns Promise<PermissionResult> Result of permission check
+ */
+export const checkWakeWordPermissions = async (): Promise<PermissionResult> => {
+  try {
+    if (Platform.OS !== 'android') {
+      return {
+        granted: false,
+        status: PermissionStatus.UNAVAILABLE,
+        permission: PermissionType.WAKE_WORD
+      };
+    }
+    
+    const granted = await PermissionsService.checkWakeWordPermissions();
+    return {
+      granted,
+      status: granted ? PermissionStatus.GRANTED : PermissionStatus.DENIED,
+      permission: PermissionType.WAKE_WORD
+    };
+  } catch (error) {
+    console.error('Error checking wake word permissions:', error);
+    return {
+      granted: false,
+      status: PermissionStatus.UNAVAILABLE,
+      permission: PermissionType.WAKE_WORD
+    };
+  }
+};
+
+/**
+ * Request all permissions needed for wake word detection
+ * 
+ * @returns Promise<PermissionResult> Result of permission request
+ */
+export const requestWakeWordPermissions = async (): Promise<PermissionResult> => {
+  try {
+    if (Platform.OS !== 'android') {
+      return {
+        granted: false,
+        status: PermissionStatus.UNAVAILABLE,
+        permission: PermissionType.WAKE_WORD
+      };
+    }
+    
+    const granted = await PermissionsService.requestWakeWordPermissions();
+    return {
+      granted,
+      status: granted ? PermissionStatus.GRANTED : PermissionStatus.DENIED,
+      permission: PermissionType.WAKE_WORD
+    };
+  } catch (error) {
+    console.error('Error requesting wake word permissions:', error);
+    return {
+      granted: false,
+      status: PermissionStatus.UNAVAILABLE,
+      permission: PermissionType.WAKE_WORD
     };
   }
 };

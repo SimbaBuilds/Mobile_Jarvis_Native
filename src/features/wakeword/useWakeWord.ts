@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Alert, Platform, NativeModules } from 'react-native';
 import WakeWordService, { WakeWordEvents } from './WakeWordService';
 import { useVoiceState } from '../voice/hooks/useVoiceState';
+import { checkWakeWordPermissions, requestWakeWordPermissions } from '../settings/permissions';
 
 /**
  * Hook for wake word detection functionality
@@ -88,6 +89,26 @@ export const useWakeWord = () => {
     setError(null);
     
     try {
+      // Check for wake word permissions first
+      const wakeWordPermissionsCheck = await checkWakeWordPermissions();
+      
+      // If we don't have the needed permissions, request them
+      if (!wakeWordPermissionsCheck.granted) {
+        console.log('Need to request wake word permissions...');
+        const permissionsResult = await requestWakeWordPermissions();
+        
+        if (!permissionsResult.granted) {
+          setError('Wake word detection requires microphone and foreground service permissions');
+          Alert.alert(
+            'Permissions Required',
+            'Wake word detection requires microphone and foreground service permissions.',
+            [{ text: 'OK' }]
+          );
+          setIsLoading(false);
+          return false;
+        }
+      }
+
       const result = await WakeWordService.startDetection();
       
       if (result.success) {
@@ -97,8 +118,8 @@ export const useWakeWord = () => {
         setError(result.error || 'Failed to start wake word detection');
         if (result.error?.includes('permission')) {
           Alert.alert(
-            'Microphone Permission Required',
-            'Wake word detection requires microphone permission.',
+            'Permission Required',
+            'Wake word detection requires proper permissions.',
             [{ text: 'OK' }]
           );
         }
