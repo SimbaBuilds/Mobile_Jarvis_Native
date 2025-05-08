@@ -2,13 +2,16 @@ package com.anonymous.MobileJarvisNative
 
 import android.os.Build
 import android.os.Bundle
+import android.content.pm.PackageManager
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
 import com.facebook.react.defaults.DefaultReactActivityDelegate
+import com.facebook.react.ReactApplication
 
 import expo.modules.ReactActivityDelegateWrapper
+import com.anonymous.MobileJarvisNative.permissions.PermissionsModule
 
 class MainActivity : ReactActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -57,5 +60,25 @@ class MainActivity : ReactActivity() {
       // Use the default back button implementation on Android S
       // because it's doing more than [Activity.moveTaskToBack] in fact.
       super.invokeDefaultOnBackPressed()
+  }
+  
+  /**
+   * Handle permission results and pass them to the appropriate modules
+   */
+  override fun onRequestPermissionsResult(
+      requestCode: Int,
+      permissions: Array<out String>,
+      grantResults: IntArray
+  ) {
+      super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+      
+      // Get the permissions module from the ReactInstanceManager
+      val reactNativeHost = (application as ReactApplication).reactNativeHost
+      val catalystInstance = reactNativeHost.reactInstanceManager.currentReactContext
+      
+      if (catalystInstance != null) {
+          val permissionModules = catalystInstance.getNativeModule(PermissionsModule::class.java)
+          permissionModules?.handlePermissionResult(requestCode, permissions, grantResults)
+      }
   }
 }
