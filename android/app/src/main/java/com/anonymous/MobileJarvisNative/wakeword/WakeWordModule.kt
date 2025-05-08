@@ -8,6 +8,7 @@ import com.anonymous.MobileJarvisNative.MainActivity
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.IntentFilter
+import android.os.Build
 
 class WakeWordModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
     private val TAG = "WakeWordModule"
@@ -35,7 +36,15 @@ class WakeWordModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
             }
             
             val intentFilter = IntentFilter("com.anonymous.MobileJarvisNative.WAKE_WORD_DETECTED_RN")
-            reactApplicationContext.registerReceiver(wakeWordReceiver, intentFilter)
+            
+            // Use the appropriate registration method based on Android version
+            // For Android 13+ (API 33+), specify RECEIVER_NOT_EXPORTED to follow best practices
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                reactApplicationContext.registerReceiver(wakeWordReceiver, intentFilter, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                reactApplicationContext.registerReceiver(wakeWordReceiver, intentFilter)
+            }
+            
             Log.d(TAG, "Registered wake word broadcast receiver")
         }
     }

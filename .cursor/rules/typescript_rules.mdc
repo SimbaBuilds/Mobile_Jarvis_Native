@@ -14,3 +14,4 @@ Description: Rules for TypeScript (React Native)
 - Define navigation types using `NativeStackNavigationProp` for type-safe navigation.
 - Pass navigation prop to components that need navigation access.
 - Use navigation prop from screen options for header actions.
+- Use Android 13+ Best Practices
