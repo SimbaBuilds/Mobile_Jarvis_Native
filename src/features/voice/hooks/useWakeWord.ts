@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Alert, Platform } from 'react-native';
-import WakeWordService, { WakeWordEvents } from '../../../services/NativeModules/WakeWordService';
+import { Alert, Platform, NativeModules } from 'react-native';
+import WakeWordService, { WakeWordEvents } from '../../../shared/services/NativeModules/WakeWordService';
 import { useVoiceState } from './useVoiceState';
 
 /**
@@ -23,8 +23,13 @@ export const useWakeWord = () => {
     const checkAvailabilityAndStatus = async () => {
       setIsLoading(true);
       try {
+        // Debug: Print all available native modules
+        console.log('Available native modules:', Object.keys(NativeModules));
+        console.log('Platform:', Platform.OS);
+        
         // First check if the feature is available
         const available = await WakeWordService.isAvailable();
+        console.log('WakeWord availability check returned:', available);
         setIsAvailable(available);
         
         if (!available) {
@@ -37,6 +42,7 @@ export const useWakeWord = () => {
         
         // If available, check if it was previously enabled
         const wasEnabled = await WakeWordService.getStatus();
+        console.log('WakeWord status check returned:', wasEnabled);
         setIsActive(wasEnabled);
         
         // Update the voice context 
@@ -67,7 +73,7 @@ export const useWakeWord = () => {
     );
     
     return () => {
-      subscription.remove();
+      subscription?.remove();
     };
   }, [setWakeWordEnabled]);
   
@@ -143,8 +149,7 @@ export const useWakeWord = () => {
   // Set the Picovoice API key
   const setAccessKey = useCallback(async (accessKey: string) => {
     try {
-      const result = await WakeWordService.setAccessKey(accessKey);
-      return result.success;
+      return await WakeWordService.setAccessKey(accessKey);
     } catch (err) {
       console.error('Error setting access key:', err);
       return false;

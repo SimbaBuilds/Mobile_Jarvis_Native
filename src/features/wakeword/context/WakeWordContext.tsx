@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import WakeWordService from '../services/WakeWordService';
+import WakeWordService from '../../../shared/services/NativeModules/WakeWordService';
 
 interface WakeWordContextType {
     isEnabled: boolean;

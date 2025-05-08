@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import VoiceService, { VoiceState, VoiceStateChangeEvent } from '../../../services/NativeModules/VoiceService';
+import VoiceService, { VoiceState, VoiceStateChangeEvent } from '../../../shared/services/NativeModules/VoiceService';
 
 /**
  * Hook for accessing and managing voice state
@@ -11,6 +11,7 @@ export function useVoiceState() {
   const [isListening, setIsListening] = useState<boolean>(false);
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
   const [error, setError] = useState<boolean>(false);
+  const [wakeWordEnabled, setWakeWordEnabled] = useState<boolean>(false);
 
   // Update derived states when voice state changes
   useEffect(() => {
@@ -81,6 +82,8 @@ export function useVoiceState() {
     isListening,
     isSpeaking,
     isError: error,
+    wakeWordEnabled,
+    setWakeWordEnabled,
     startListening,
     stopListening,
     interruptSpeech

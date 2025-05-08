@@ -2,10 +2,22 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, SafeAreaView, Platform } from 'react-native';
 import { WakeWordStatus } from '../features/wakeword/components/WakeWordStatus';
 import { WakeWordToggle } from '../features/wakeword/components/WakeWordToggle';
-import { VoiceAssistant } from '../features/voice/components/VoiceAssistant';
+import { VoiceAssistant } from '../shared/components/VoiceAssistant/VoiceAssistant';
 import { VoiceErrorBoundary } from '../shared/components/ErrorBoundary/VoiceErrorBoundary';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-export const HomeScreen: React.FC = () => {
+type RootStackParamList = {
+  Home: undefined;
+  Settings: undefined;
+};
+
+type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
+
+type Props = {
+  navigation: HomeScreenNavigationProp;
+};
+
+export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>

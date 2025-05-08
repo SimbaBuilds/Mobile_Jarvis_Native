@@ -1,76 +1,19 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, Platform, ActivityIndicator } from 'react-native';
-import { VoiceProvider } from './src/features/voice/context/VoiceContext';
-import { WakeWordToggle } from './src/features/voice/components/WakeWordToggle';
-import { usePermissions } from './src/features/settings/hooks/usePermissions';
-import { VoiceAssistant } from './src/shared/components/VoiceAssistant/VoiceAssistant';
-import { VoiceErrorBoundary } from './src/shared/components/ErrorBoundary/VoiceErrorBoundary';
-import WakeWordService from './src/features/wakeword/services/WakeWordService';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { VoiceProvider } from './src/features/voice/context/VoiceContext';
 import { WakeWordProvider } from './src/features/wakeword/context/WakeWordContext';
+import WakeWordService from './src/shared/services/NativeModules/WakeWordService';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
+import { Ionicons } from '@expo/vector-icons';
 
-const Stack = createNativeStackNavigator();
-
-const PermissionsSection = () => {
-  const {
-    permissions,
-    loading,
-    requestMicrophone,
-    requestBatteryExemption,
-    hasMicrophonePermission,
-    hasBatteryOptimizationExemption,
-  } = usePermissions();
-
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#0000ff" />
-        <Text style={styles.loadingText}>Checking permissions...</Text>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.permissionsSection}>
-      <Text style={styles.sectionTitle}>Required Permissions</Text>
-      
-      <View style={styles.permissionItem}>
-        <Text style={styles.permissionTitle}>Microphone Access</Text>
-        <Text style={styles.permissionStatus}>
-          Status: {hasMicrophonePermission ? '✅ Granted' : '❌ Not Granted'}
-        </Text>
-        {!hasMicrophonePermission && (
-          <Text 
-            style={styles.permissionButton}
-            onPress={requestMicrophone}
-          >
-            Grant Microphone Permission
-          </Text>
-        )}
-      </View>
-
-      {Platform.OS === 'android' && (
-        <View style={styles.permissionItem}>
-          <Text style={styles.permissionTitle}>Battery Optimization</Text>
-          <Text style={styles.permissionStatus}>
-            Status: {hasBatteryOptimizationExemption ? '✅ Optimized' : '❌ Not Optimized'}
-          </Text>
-          {!hasBatteryOptimizationExemption && (
-            <Text 
-              style={styles.permissionButton}
-              onPress={requestBatteryExemption}
-            >
-              Optimize Battery Usage
-            </Text>
-          )}
-        </View>
-      )}
-    </View>
-  );
+type RootStackParamList = {
+  Home: undefined;
+  Settings: undefined;
 };
+
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
   // Initialize any needed configurations here
@@ -93,98 +36,43 @@ export default function App() {
     <NavigationContainer>
       <VoiceProvider>
         <WakeWordProvider>
-          <Stack.Navigator>
-            <Stack.Screen name="Home" component={HomeScreen} />
-            <Stack.Screen name="Settings" component={SettingsScreen} />
+          <Stack.Navigator
+            screenOptions={{
+              headerStyle: {
+                backgroundColor: '#f5f5f5',
+              },
+              headerTintColor: '#333',
+              headerTitleStyle: {
+                fontWeight: 'bold',
+              },
+            }}
+          >
+            <Stack.Screen 
+              name="Home" 
+              component={HomeScreen} 
+              options={({ navigation }) => ({
+                title: 'Jarvis',
+                headerRight: () => (
+                  <Ionicons 
+                    name="settings-outline" 
+                    size={24} 
+                    color="#333"
+                    style={{ marginRight: 16 }}
+                    onPress={() => navigation.navigate('Settings')}
+                  />
+                ),
+              })}
+            />
+            <Stack.Screen 
+              name="Settings" 
+              component={SettingsScreen}
+              options={{
+                title: 'Settings',
+              }}
+            />
           </Stack.Navigator>
         </WakeWordProvider>
       </VoiceProvider>
     </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  scrollContent: {
-    padding: 16,
-  },
-  header: {
-    marginVertical: 24,
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 8,
-  },
-  loadingContainer: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 10,
-    color: '#666',
-  },
-  permissionsSection: {
-    marginVertical: 16,
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  permissionItem: {
-    marginVertical: 8,
-  },
-  permissionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-  },
-  permissionStatus: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 4,
-  },
-  permissionButton: {
-    color: '#007AFF',
-    marginTop: 8,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  settingsSection: {
-    marginVertical: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 8,
-    color: '#333',
-  },
-  infoSection: {
-    backgroundColor: '#e6f2ff',
-    padding: 16,
-    borderRadius: 8,
-    marginTop: 16,
-  },
-  infoText: {
-    fontSize: 14,
-    color: '#444',
-    marginBottom: 8,
-  },
-  voiceAssistantContainer: {
-    minHeight: 200,
-    marginVertical: 16,
-  },
-});

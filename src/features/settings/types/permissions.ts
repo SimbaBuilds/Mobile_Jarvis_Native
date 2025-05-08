@@ -1,6 +1,39 @@
 import { Platform } from 'react-native';
-import { PermissionsService } from '../services/NativeModules/PermissionsService';
-import { PermissionResult, PermissionStatus, PermissionType } from './permissions';
+import { PermissionsService } from '../../../shared/services/NativeModules/PermissionsService';
+
+/**
+ * Permission event interface for native module events
+ */
+export interface PermissionEvent {
+  permission: string;
+  granted: boolean;
+}
+
+/**
+ * Permission status enum
+ */
+export enum PermissionStatus {
+  GRANTED = 'granted',
+  DENIED = 'denied',
+  UNAVAILABLE = 'unavailable',
+}
+
+/**
+ * Permission types used in the app
+ */
+export enum PermissionType {
+  MICROPHONE = 'microphone',
+  BATTERY_OPTIMIZATION = 'battery_optimization',
+}
+
+/**
+ * Permission result interface
+ */
+export interface PermissionResult {
+  granted: boolean;
+  status: PermissionStatus;
+  permission: PermissionType;
+} 
 
 /**
  * Utility functions for working with permissions

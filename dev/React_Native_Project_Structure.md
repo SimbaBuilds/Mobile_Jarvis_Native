@@ -1,6 +1,7 @@
 ## The src folder for my React Native project is organized by feature as follows:
 
 
+App.tsx
 src/
 ├── features/
 │   ├── auth/
@@ -67,4 +68,4 @@ src/
 ├── config/
 ├── store/
 ├── index.tsx
-└── App.tsx
+
