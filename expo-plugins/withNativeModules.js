@@ -38,7 +38,7 @@ const withNativeModules = (config) => {
       // Find the line where packages are created
       const importSection = `import com.anonymous.MobileJarvisNative.wakeword.WakeWordPackage
 import com.anonymous.MobileJarvisNative.voice.VoicePackage
-import com.anonymous.MobileJarvisNative.settings.SettingsPackage
+import com.anonymous.MobileJarvisNative.settings.AppConfigPackage
 import com.anonymous.MobileJarvisNative.permissions.PermissionsPackage`;
 
       // Add imports if they don't exist

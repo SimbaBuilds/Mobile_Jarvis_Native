@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import com.facebook.react.modules.core.DeviceEventManagerModule
-import com.facebook.react.ReactApplicationContext
+import com.anonymous.MobileJarvisNative.utils.Constants
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStream
@@ -527,7 +527,7 @@ class VoiceManager private constructor() {
     /**
      * Update the voice state and notify registered callbacks
      */
-    private fun updateState(newState: VoiceState) {
+    internal fun updateState(newState: VoiceState) {
         Log.d(TAG, "Updating voice state from ${_voiceState.value.javaClass.simpleName} to ${newState.javaClass.simpleName}")
         _voiceState.value = newState
         
@@ -546,6 +546,7 @@ class VoiceManager private constructor() {
             is VoiceState.LISTENING,
             is VoiceState.PROCESSING,
             is VoiceState.RESPONDING,
+            is VoiceState.SPEAKING,
             is VoiceState.ERROR -> {
                 // Ensure wake word detection is paused during active conversation
                 Log.d(TAG, "Active conversation state, pausing wake word detection")
@@ -693,12 +694,20 @@ class VoiceManager private constructor() {
             params.put("text", text)
             
             Handler(Looper.getMainLooper()).post {
-                val reactContext = context as? ReactApplicationContext
-                reactContext?.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-                    ?.emit(Constants.Actions.SPEECH_RESULT, params.toString())
+                try {
+                    // Use ApplicationContext instead of ReactApplicationContext directly
+                    val currentContext = context.applicationContext
+                    if (currentContext is com.facebook.react.bridge.ReactContext) {
+                        currentContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+                            ?.emit(Constants.Actions.SPEECH_RESULT, params.toString())
+                        Log.d(TAG, "Speech result sent to React Native")
+                    } else {
+                        Log.e(TAG, "Context is not a ReactContext, cannot send event to React Native")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error sending event to React Native: ${e.message}", e)
+                }
             }
-            
-            Log.d(TAG, "Speech result sent to React Native")
         } catch (e: Exception) {
             Log.e(TAG, "Error sending speech result to React Native: ${e.message}", e)
         }

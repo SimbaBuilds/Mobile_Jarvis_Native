@@ -1,6 +1,6 @@
 import { NativeModules } from 'react-native';
 
-const { SettingsModule } = NativeModules;
+const { AppConfigModule } = NativeModules;
 
 export interface ServerApiConfig {
   baseUrl: string;
@@ -28,7 +28,7 @@ class SettingsService {
    */
   public async getServerApiConfig(): Promise<ServerApiConfig> {
     try {
-      return await SettingsModule.getServerApiConfig();
+      return await AppConfigModule.getServerApiConfig();
     } catch (error) {
       console.error('Error getting server API config:', error);
       // Return default values on error
@@ -44,7 +44,7 @@ class SettingsService {
    */
   public async updateServerApiConfig(config: Partial<ServerApiConfig>): Promise<boolean> {
     try {
-      return await SettingsModule.updateServerApiConfig(
+      return await AppConfigModule.updateServerApiConfig(
         config.baseUrl || '',
         config.apiEndpoint || ''
       );
@@ -59,7 +59,7 @@ class SettingsService {
    */
   public async getAppConfig(): Promise<AppConfig> {
     try {
-      return await SettingsModule.getAppConfig();
+      return await AppConfigModule.getAppConfig();
     } catch (error) {
       console.error('Error getting app config:', error);
       throw error;

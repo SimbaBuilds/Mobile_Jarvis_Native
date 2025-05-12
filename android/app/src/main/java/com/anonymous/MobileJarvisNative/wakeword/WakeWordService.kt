@@ -30,6 +30,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.anonymous.MobileJarvisNative.utils.Constants
+import kotlinx.coroutines.SupervisorJob
 
 /**
  * Service that listens for the wake word "Jarvis" in the background
@@ -39,29 +40,35 @@ class WakeWordService : Service() {
     private val TAG = "WakeWordService"
     private var porcupineManager: PorcupineManager? = null
     private var isRunning = false
-    private var serviceScope = CoroutineScope(Dispatchers.Main)
+    private var isPaused = false
+    private var isServiceRunning = false
+    private var serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var stateMonitorJob: Job? = null
     private lateinit var voiceManager: VoiceManager
     private lateinit var prefs: SharedPreferences
     private lateinit var configManager: ConfigManager
     private lateinit var brWakeWordPause: BroadcastReceiver
-    private var isPaused = false
+    private var wakeWordCallback: PorcupineManagerCallback? = null
     
     // Notification constants
     private val NOTIFICATION_CHANNEL_ID = "wake_word_channel"
     private val NOTIFICATION_ID = 1001
 
     companion object {
-        private var isServiceRunning = false
-
         fun isRunning(): Boolean {
-            return isServiceRunning
+            return instance?.isServiceRunning ?: false
         }
+        
+        @Volatile
+        private var instance: WakeWordService? = null
     }
     
     override fun onCreate() {
         super.onCreate()
         Log.i(TAG, "Service onCreate called")
+        
+        instance = this
+        isServiceRunning = true
         
         // Initialize minimal requirements
         prefs = getSharedPreferences("wakeword_prefs", Context.MODE_PRIVATE)
@@ -462,7 +469,7 @@ class WakeWordService : Service() {
                     pauseWakeWordButKeepMicActive()
                 } else if (intent.action == Constants.Actions.RESUME_WAKE_WORD) {
                     Log.i(TAG, "Received broadcast to resume wake word detection")
-                    resumeWakeWordDetection()
+                    resumeWakeWordDetectionFromPaused()
                 }
             }
         }
@@ -511,9 +518,9 @@ class WakeWordService : Service() {
     }
     
     /**
-     * Resume wake word detection
+     * Resume wake word detection with paused state handling
      */
-    private fun resumeWakeWordDetection() {
+    private fun resumeWakeWordDetectionFromPaused() {
         if (!isPaused) {
             Log.d(TAG, "Wake word detection not paused")
             return
@@ -534,6 +541,37 @@ class WakeWordService : Service() {
             Log.d(TAG, "Wake word detection resumed")
         } catch (e: Exception) {
             Log.e(TAG, "Error resuming wake word detection: ${e.message}", e)
+        }
+    }
+    
+    /**
+     * Update notification with new title and text
+     */
+    private fun updateNotification(title: String, text: String) {
+        val builder = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setSmallIcon(android.R.drawable.ic_media_play)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setOngoing(true)
+
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.notify(Constants.NOTIFICATION_ID, builder.build())
+    }
+
+    /**
+     * Create wake word callback
+     */
+    private fun createWakeWordCallback(): PorcupineManagerCallback {
+        return object : PorcupineManagerCallback {
+            override fun invoke(keywordIndex: Int) {
+                try {
+                    Log.d(TAG, "🎙️ Wake word callback received for keyword index: $keywordIndex")
+                    onWakeWordDetected(keywordIndex)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error in wake word callback: ${e.message}", e)
+                }
+            }
         }
     }
     

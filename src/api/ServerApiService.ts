@@ -1,5 +1,5 @@
 import { ChatMessage } from '../features/voice/VoiceContext';
-import SettingsService from '../settings/SettingsService';
+import SettingsService from '../app-config/AppConfigService';
 
 // Default server configuration
 const DEFAULT_SERVER_CONFIG = {

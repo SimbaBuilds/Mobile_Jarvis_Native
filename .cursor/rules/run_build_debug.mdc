@@ -28,6 +28,6 @@ If no native (kotlin/java) changes:
 - TS/JS changes appear immediately eith hot reloading
 
 Example logcat debugging commands:
-1. adb logcat -d | grep -i "picovoice" | tail -20 | cat
-2. adb logcat -d | head -10 | cat
-3. adb logcat -c
+1. Feature specific example: adb logcat -d | grep -i "picovoice" | tail -20 | cat
+2. Clear logcat buffer: adb logcat -c
+3. Fetch errors: `adb logcat "*:E" -d | cat`

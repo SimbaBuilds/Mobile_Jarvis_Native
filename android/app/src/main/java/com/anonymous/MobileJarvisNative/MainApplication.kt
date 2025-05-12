@@ -22,7 +22,7 @@ import expo.modules.ReactNativeHostWrapper
 import com.anonymous.MobileJarvisNative.wakeword.WakeWordPackage
 import com.anonymous.MobileJarvisNative.voice.VoicePackage
 import com.anonymous.MobileJarvisNative.permissions.PermissionsPackage
-import com.anonymous.MobileJarvisNative.settings.SettingsPackage
+import com.anonymous.MobileJarvisNative.app_config.AppConfigPackage
 
 class MainApplication : Application(), ReactApplication {
 
@@ -35,7 +35,7 @@ class MainApplication : Application(), ReactApplication {
             packages.add(WakeWordPackage())
             packages.add(VoicePackage())
             packages.add(PermissionsPackage())
-            packages.add(SettingsPackage())
+            packages.add(AppConfigPackage())
             return packages
           }
 

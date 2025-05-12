@@ -1,4 +1,4 @@
-package com.anonymous.MobileJarvisNative.settings
+package com.anonymous.MobileJarvisNative.app_config
 
 import android.util.Log
 import com.anonymous.MobileJarvisNative.ConfigManager
@@ -7,12 +7,12 @@ import com.facebook.react.bridge.*
 /**
  * Bridge module for exposing app settings to React Native
  */
-class SettingsModule(private val reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
-    private val TAG = "SettingsModule"
+class AppConfigModule(private val reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
+    private val TAG = "AppConfigModule"
     private val configManager = ConfigManager.getInstance()
     
     override fun getName(): String {
-        return "SettingsModule"
+        return "AppConfigModule"
     }
     
     /**
