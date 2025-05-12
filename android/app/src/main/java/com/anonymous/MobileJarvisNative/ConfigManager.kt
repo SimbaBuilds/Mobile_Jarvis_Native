@@ -60,6 +60,22 @@ class ConfigManager private constructor(private val context: Context) {
     }
     
     /**
+     * Get the server API base URL
+     */
+    fun getServerApiBaseUrl(): String {
+        val propertyValue = properties.getProperty(Constants.Config.SERVER_API_BASE_URL, "http://192.168.1.131:8000")
+        return prefs.getString(Constants.Config.SERVER_API_BASE_URL, propertyValue) ?: propertyValue
+    }
+    
+    /**
+     * Get the server API endpoint
+     */
+    fun getServerApiEndpoint(): String {
+        val propertyValue = properties.getProperty(Constants.Config.SERVER_API_ENDPOINT, "/api/chat")
+        return prefs.getString(Constants.Config.SERVER_API_ENDPOINT, propertyValue) ?: propertyValue
+    }
+    
+    /**
      * Get a property value from config.properties
      */
     fun getProperty(key: String, defaultValue: String = ""): String {

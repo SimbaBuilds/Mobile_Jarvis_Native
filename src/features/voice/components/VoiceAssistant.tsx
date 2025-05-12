@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import React from 'react';
+import { View, StyleSheet, ActivityIndicator, FlatList, Text } from 'react-native';
 import { VoiceButton } from './VoiceButton';
 import { VoiceResponseDisplay } from './VoiceResponseDisplay';
-import { useVoiceRecognition } from '../hooks/useVoiceRecognition';
+import { useVoice } from '../VoiceContext';
 import { VoiceStatusIndicator } from './VoiceStatusIndicator';
 
 interface VoiceAssistantProps {
@@ -16,49 +16,30 @@ interface VoiceAssistantProps {
 export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ 
   onSpeechResult 
 }) => {
-  const [response, setResponse] = useState<string>('');
-  
-  // Use the voice recognition hook
   const { 
     isListening,
     isSpeaking,
-    recognizedText,
+    transcript,
     voiceState,
-    isReady,
-    isError
-  } = useVoiceRecognition({
-    onResult: (text) => {
-      if (text) {
-        if (onSpeechResult) {
-          onSpeechResult(text);
-        }
-        // In a real app, we would send the text to an API and get a response
-        // For now, we'll just echo it back
-        const mockResponse = `I heard: "${text}"`;
-        setResponse(mockResponse);
-      }
-    }
-  });
-  
-  // Clear response when returning to idle
-  useEffect(() => {
-    if (!isListening && !isSpeaking) {
-      // Delay clearing so user can see the last response
-      const timer = setTimeout(() => {
-        setResponse('');
-      }, 5000);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [isListening, isSpeaking]);
+    isError,
+    chatHistory,
+    setTranscript
+  } = useVoice();
 
-  if (!isReady) {
-    return (
-      <View style={[styles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
-    );
-  }
+  // When a speech result is received, call the callback
+  React.useEffect(() => {
+    if (transcript && onSpeechResult) {
+      onSpeechResult(transcript);
+    }
+  }, [transcript, onSpeechResult]);
+  
+  // Format timestamp to readable time
+  const formatTime = (timestamp: number) => {
+    return new Date(timestamp).toLocaleTimeString([], { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+  };
 
   if (isError) {
     throw isError; // This will be caught by the error boundary
@@ -68,12 +49,26 @@ export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({
     <View style={styles.container}>
       <VoiceStatusIndicator />
       
-      {response ? (
-        <VoiceResponseDisplay
-          text={response}
-          style={styles.responseContainer}
+      {chatHistory.length > 0 ? (
+        <FlatList
+          data={chatHistory}
+          keyExtractor={(item, index) => `chat-${index}-${item.timestamp}`}
+          style={styles.chatList}
+          renderItem={({ item }) => (
+            <View style={[
+              styles.chatBubble, 
+              item.role === 'user' ? styles.userBubble : styles.assistantBubble
+            ]}>
+              <Text style={styles.chatText}>{item.content}</Text>
+              <Text style={styles.timeText}>{formatTime(item.timestamp)}</Text>
+            </View>
+          )}
         />
-      ) : null}
+      ) : (
+        <View style={styles.emptyChatContainer}>
+          <Text style={styles.emptyChatText}>Say "Jarvis" to activate the assistant</Text>
+        </View>
+      )}
       
       <View style={styles.buttonContainer}>
         <VoiceButton />
@@ -88,17 +83,51 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
   },
-  centerContent: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  responseContainer: {
+  chatList: {
     flex: 1,
-    justifyContent: 'center',
-    padding: 16,
+    marginVertical: 16,
+  },
+  chatBubble: {
+    padding: 12,
+    borderRadius: 16,
+    marginVertical: 6,
+    maxWidth: '80%',
+    minWidth: 100,
+  },
+  userBubble: {
+    backgroundColor: '#3B82F6',
+    alignSelf: 'flex-end',
+    marginLeft: 40,
+    borderBottomRightRadius: 4,
+  },
+  assistantBubble: {
+    backgroundColor: '#262626',
+    alignSelf: 'flex-start',
+    marginRight: 40,
+    borderBottomLeftRadius: 4,
+  },
+  chatText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+  },
+  timeText: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 11,
+    marginTop: 4,
+    textAlign: 'right',
   },
   buttonContainer: {
     alignItems: 'center',
     padding: 20,
+  },
+  emptyChatContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyChatText: {
+    color: '#888888',
+    fontSize: 16,
+    textAlign: 'center',
   },
 });

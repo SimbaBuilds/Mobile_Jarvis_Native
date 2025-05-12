@@ -11,6 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import com.anonymous.MobileJarvisNative.utils.Constants
 
 /**
  * Bridge module for exposing Voice functionality to React Native
@@ -93,7 +94,7 @@ class VoiceModule(private val reactContext: ReactApplicationContext) : ReactCont
     @ReactMethod
     fun addListener(eventName: String) {
         // Required for RN built in Event Emitter
-        if (eventName == "onVoiceStateChange") {
+        if (eventName == Constants.Actions.VOICE_STATE_CHANGE) {
             // Set up the state flow collector if not already set up
             setupStateFlowListener()
         }
@@ -115,7 +116,7 @@ class VoiceModule(private val reactContext: ReactApplicationContext) : ReactCont
         voiceManager.voiceState
             .onEach { state ->
                 // Send the state update to JS
-                sendEvent("onVoiceStateChange", mapOf("state" to state.toString()))
+                sendEvent(Constants.Actions.VOICE_STATE_CHANGE, mapOf("state" to state.toString()))
             }
             .launchIn(coroutineScope)
     }
@@ -127,5 +128,37 @@ class VoiceModule(private val reactContext: ReactApplicationContext) : ReactCont
         reactContext
             .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
             .emit(eventName, params)
+    }
+
+    /**
+     * Speak a response using TTS
+     */
+    @ReactMethod
+    fun speakResponse(text: String, promise: Promise) {
+        Log.d(TAG, "speakResponse called from JS with text: $text")
+        try {
+            coroutineScope.launch {
+                try {
+                    // Update voice state to speaking
+                    voiceManager.updateState(VoiceManager.VoiceState.SPEAKING)
+                    
+                    // Use Deepgram for TTS
+                    val deepgramClient = DeepgramClient(reactContext)
+                    deepgramClient.initialize()
+                    deepgramClient.speak(text)
+                    
+                    // After speaking is complete, reset state
+                    voiceManager.updateState(VoiceManager.VoiceState.IDLE)
+                    
+                    promise.resolve(true)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error in speakResponse coroutine", e)
+                    promise.reject("ERR_TTS", e.message, e)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error speaking response", e)
+            promise.reject("ERR_TTS", e.message, e)
+        }
     }
 } 

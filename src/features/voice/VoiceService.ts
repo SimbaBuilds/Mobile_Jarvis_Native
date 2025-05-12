@@ -21,6 +21,15 @@ export interface SpeechResultEvent {
     text: string;
 }
 
+export interface AssistantResponseEvent {
+    text: string;
+}
+
+// Event names for consistency
+const EVENT_SPEECH_RESULT = 'speechResult';
+const EVENT_ASSISTANT_RESPONSE = 'assistantResponse';
+const EVENT_VOICE_STATE_CHANGE = 'onVoiceStateChange';
+
 class VoiceService {
     private static instance: VoiceService;
     private eventEmitter: NativeEventEmitter;
@@ -73,8 +82,17 @@ class VoiceService {
         }
     }
 
+    public async speakResponse(text: string): Promise<boolean> {
+        try {
+            return await VoiceModule.speakResponse(text);
+        } catch (error) {
+            console.error('Error speaking response:', error);
+            throw error;
+        }
+    }
+
     public onVoiceStateChange(callback: (event: VoiceStateChangeEvent) => void): () => void {
-        const subscription = this.eventEmitter.addListener('onVoiceStateChange', callback);
+        const subscription = this.eventEmitter.addListener(EVENT_VOICE_STATE_CHANGE, callback);
         this.listeners.push(subscription);
         
         return () => {
@@ -84,7 +102,17 @@ class VoiceService {
     }
 
     public onSpeechResult(callback: (event: SpeechResultEvent) => void): () => void {
-        const subscription = this.eventEmitter.addListener('speechResult', callback);
+        const subscription = this.eventEmitter.addListener(EVENT_SPEECH_RESULT, callback);
+        this.listeners.push(subscription);
+        
+        return () => {
+            subscription.remove();
+            this.listeners = this.listeners.filter(listener => listener !== subscription);
+        };
+    }
+
+    public onAssistantResponse(callback: (event: AssistantResponseEvent) => void): () => void {
+        const subscription = this.eventEmitter.addListener(EVENT_ASSISTANT_RESPONSE, callback);
         this.listeners.push(subscription);
         
         return () => {

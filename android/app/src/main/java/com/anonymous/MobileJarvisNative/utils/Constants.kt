@@ -23,9 +23,11 @@ object Constants {
     // Config property keys
     object Config {
         const val PICOVOICE_ACCESS_KEY = "picovoice_access_key"
-        const val OPENAI_API_KEY = "openai_api_key"
-        const val ELEVENLABS_API_KEY = "elevenlabs_api_key"
         const val DEEPGRAM_API_KEY = "deepgram_api_key"
+        const val ELEVENLABS_API_KEY = "elevenlabs_api_key"
+        const val OPENAI_API_KEY = "openai_api_key"
+        const val SERVER_API_BASE_URL = "server_api_base_url"
+        const val SERVER_API_ENDPOINT = "server_api_endpoint"
     }
     
     // Intent extras
@@ -54,5 +56,17 @@ object Constants {
             android.Manifest.permission.CAMERA,
             android.Manifest.permission.READ_CONTACTS
         )
+    }
+    
+    object Actions {
+        // Wake word actions
+        const val WAKE_WORD_DETECTED_RN = "com.anonymous.MobileJarvisNative.WAKE_WORD_DETECTED_RN"
+        const val PAUSE_WAKE_WORD_KEEP_LISTENING = "com.anonymous.MobileJarvisNative.PAUSE_WAKE_WORD_KEEP_LISTENING"
+        const val RESUME_WAKE_WORD = "com.anonymous.MobileJarvisNative.RESUME_WAKE_WORD"
+        
+        // Voice events
+        const val SPEECH_RESULT = "speechResult"
+        const val ASSISTANT_RESPONSE = "assistantResponse"
+        const val VOICE_STATE_CHANGE = "onVoiceStateChange"
     }
 } 

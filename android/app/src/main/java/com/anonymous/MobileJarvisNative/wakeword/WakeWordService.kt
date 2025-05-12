@@ -11,6 +11,8 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.content.BroadcastReceiver
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
@@ -27,6 +29,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.anonymous.MobileJarvisNative.utils.Constants
 
 /**
  * Service that listens for the wake word "Jarvis" in the background
@@ -41,6 +44,8 @@ class WakeWordService : Service() {
     private lateinit var voiceManager: VoiceManager
     private lateinit var prefs: SharedPreferences
     private lateinit var configManager: ConfigManager
+    private lateinit var brWakeWordPause: BroadcastReceiver
+    private var isPaused = false
     
     // Notification constants
     private val NOTIFICATION_CHANNEL_ID = "wake_word_channel"
@@ -68,6 +73,9 @@ class WakeWordService : Service() {
         serviceScope.launch(Dispatchers.Main) {
             startForegroundWithNotification()
         }
+        
+        // Register broadcast receiver for pause/resume commands
+        registerPauseResumeReceiver()
     }
 
     /**
@@ -443,9 +451,104 @@ class WakeWordService : Service() {
         return builder.build()
     }
     
+    /**
+     * Register broadcast receiver for pause/resume commands
+     */
+    private fun registerPauseResumeReceiver() {
+        brWakeWordPause = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                if (intent.action == Constants.Actions.PAUSE_WAKE_WORD_KEEP_LISTENING) {
+                    Log.i(TAG, "Received broadcast to pause wake word detection but keep mic active")
+                    pauseWakeWordButKeepMicActive()
+                } else if (intent.action == Constants.Actions.RESUME_WAKE_WORD) {
+                    Log.i(TAG, "Received broadcast to resume wake word detection")
+                    resumeWakeWordDetection()
+                }
+            }
+        }
+        
+        val filter = IntentFilter().apply {
+            addAction(Constants.Actions.PAUSE_WAKE_WORD_KEEP_LISTENING)
+            addAction(Constants.Actions.RESUME_WAKE_WORD)
+        }
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(brWakeWordPause, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(brWakeWordPause, filter)
+        }
+        
+        Log.d(TAG, "Registered pause/resume broadcast receiver")
+    }
+    
+    /**
+     * Pause wake word detection but keep microphone active for other voice processing
+     */
+    private fun pauseWakeWordButKeepMicActive() {
+        if (isPaused) {
+            Log.d(TAG, "Wake word detection already paused")
+            return
+        }
+        
+        try {
+            Log.i(TAG, "Pausing wake word detection but keeping mic active")
+            
+            // Set paused flag
+            isPaused = true
+            
+            // Update notification to show paused state
+            updateNotification("Voice active", "Listening for your command...")
+            
+            // Note: We're not stopping the recorder or detector, just ignoring wake word events
+            // This allows the microphone to remain active for voice processing
+            // But we'll disable the callback to prevent wake word triggers
+            wakeWordCallback = null
+            
+            Log.d(TAG, "Wake word detection paused, microphone still active")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error pausing wake word detection: ${e.message}", e)
+        }
+    }
+    
+    /**
+     * Resume wake word detection
+     */
+    private fun resumeWakeWordDetection() {
+        if (!isPaused) {
+            Log.d(TAG, "Wake word detection not paused")
+            return
+        }
+        
+        try {
+            Log.i(TAG, "Resuming wake word detection")
+            
+            // Reset paused flag
+            isPaused = false
+            
+            // Update notification
+            updateNotification("Listening for wake word", "Say 'Jarvis' to activate")
+            
+            // Restore wake word callback
+            wakeWordCallback = createWakeWordCallback()
+            
+            Log.d(TAG, "Wake word detection resumed")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error resuming wake word detection: ${e.message}", e)
+        }
+    }
+    
     override fun onDestroy() {
         super.onDestroy()
         cleanup()
+        
+        // Unregister pause/resume receiver
+        try {
+            unregisterReceiver(brWakeWordPause)
+            Log.d(TAG, "Unregistered pause/resume broadcast receiver")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error unregistering pause/resume receiver: ${e.message}", e)
+        }
+        
         Log.i(TAG, "Service destroyed")
     }
     

@@ -22,6 +22,7 @@ export interface VoiceContextState {
   isListening: boolean;
   isSpeaking: boolean;
   isError: boolean;
+  chatHistory: { role: 'user' | 'assistant'; content: string; timestamp: number }[];
 }
 
 /**
@@ -37,6 +38,7 @@ export interface VoiceContextActions {
   stopListening: () => Promise<boolean>;
   resetState: () => void;
   interruptSpeech: () => Promise<boolean>;
+  clearChatHistory: () => void;
 }
 
 /**

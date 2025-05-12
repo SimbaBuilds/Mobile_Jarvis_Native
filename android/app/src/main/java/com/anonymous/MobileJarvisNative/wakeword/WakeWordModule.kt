@@ -13,6 +13,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.anonymous.MobileJarvisNative.utils.Constants
 
 class WakeWordModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
     private val TAG = "WakeWordModule"
@@ -33,7 +34,7 @@ class WakeWordModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
         if (wakeWordReceiver == null) {
             wakeWordReceiver = object : BroadcastReceiver() {
                 override fun onReceive(context: Context, intent: Intent) {
-                    if (intent.action == "com.anonymous.MobileJarvisNative.WAKE_WORD_DETECTED_RN") {
+                    if (intent.action == Constants.Actions.WAKE_WORD_DETECTED_RN) {
                         val timestamp = intent.getLongExtra("timestamp", System.currentTimeMillis())
                         val timeString = java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.US).format(java.util.Date(timestamp))
                         
@@ -53,7 +54,7 @@ class WakeWordModule(reactContext: ReactApplicationContext) : ReactContextBaseJa
                 }
             }
             
-            val intentFilter = IntentFilter("com.anonymous.MobileJarvisNative.WAKE_WORD_DETECTED_RN")
+            val intentFilter = IntentFilter(Constants.Actions.WAKE_WORD_DETECTED_RN)
             
             // Use the appropriate registration method based on Android version
             // For Android 13+ (API 33+), specify RECEIVER_NOT_EXPORTED to follow best practices

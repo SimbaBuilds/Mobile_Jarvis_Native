@@ -18,6 +18,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.json.JSONObject
+import com.facebook.react.modules.core.DeviceEventManagerModule
+import com.facebook.react.ReactApplicationContext
+import java.io.File
+import java.io.FileOutputStream
+import java.io.OutputStream
 
 /**
  * VoiceManager - Unified manager for all voice-related functionality
@@ -65,6 +70,10 @@ class VoiceManager private constructor() {
     // Context reference
     private lateinit var context: Context
     
+    // Additional properties for Whisper client and Deepgram
+    private lateinit var whisperClient: WhisperClient
+    private lateinit var deepgramClient: DeepgramClient
+
     companion object {
         @Volatile
         private var instance: VoiceManager? = null
@@ -92,6 +101,12 @@ class VoiceManager private constructor() {
         
         // Initialize services
         initialize()
+        
+        // Initialize Whisper client
+        whisperClient = WhisperClient(context)
+        
+        // Initialize Deepgram client for TTS
+        deepgramClient = DeepgramClient(context)
     }
     
     /**
@@ -178,11 +193,22 @@ class VoiceManager private constructor() {
         }
         
         lastWakeWordTimestamp = timestamp
-        Log.i(TAG, "Wake word detected, starting voice processor...")
+        Log.i(TAG, "Wake word detected, stopping wake word detection but keeping listening on...")
         
         try {
             // Update state - this will automatically pause wake word detection
             updateState(VoiceState.WAKE_WORD_DETECTED)
+            
+            // Explicitly tell the WakeWordService to pause but keep mic active
+            val intent = Intent("com.anonymous.MobileJarvisNative.PAUSE_WAKE_WORD_KEEP_LISTENING")
+            context.sendBroadcast(intent)
+            Log.d(TAG, "Sent broadcast to pause wake word detection but keep mic active")
+            
+            // Initialize Whisper client for speech recognition
+            initializeWhisperClient()
+            
+            // Play "Sir?" response using Deepgram TTS
+            playWakeWordResponse()
             
             // Start listening for speech
             startListening()
@@ -193,6 +219,35 @@ class VoiceManager private constructor() {
             showError("Unable to start voice recognition: ${e.message}")
             resetToIdle()
             return false
+        }
+    }
+    
+    /**
+     * Initialize Whisper client for speech recognition
+     */
+    private fun initializeWhisperClient() {
+        Log.i(TAG, "Initializing OpenAI Whisper client")
+        try {
+            whisperClient.initialize()
+            Log.d(TAG, "Whisper client initialized successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error initializing Whisper client: ${e.message}", e)
+            throw e
+        }
+    }
+    
+    /**
+     * Play "Sir?" response using Deepgram TTS
+     */
+    private fun playWakeWordResponse() {
+        coroutineScope.launch {
+            try {
+                Log.i(TAG, "Playing wake word response: 'Sir?'")
+                deepgramClient.speak("Sir?")
+                Log.d(TAG, "Wake word response played successfully")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error playing wake word response: ${e.message}", e)
+            }
         }
     }
     
@@ -602,6 +657,160 @@ class VoiceManager private constructor() {
     }
     
     /**
+     * Process speech recognition result
+     */
+    private fun processSpeechResult(text: String) {
+        if (text.isEmpty()) {
+            Log.d(TAG, "Empty speech result, ignoring")
+            return
+        }
+        
+        Log.i(TAG, "Processing speech result: $text")
+        lastProcessedText = text
+        
+        try {
+            // Update state to processing
+            updateState(VoiceState.PROCESSING)
+            
+            // Send event to RN with the recognized text
+            sendSpeechResultToReactNative(text)
+            
+            // Reset back to idle after sending to RN
+            // React Native will handle further processing
+            updateState(VoiceState.IDLE)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error processing speech: ${e.message}", e)
+            showError("Error processing speech: ${e.message}")
+        }
+    }
+    
+    /**
+     * Send speech result to React Native
+     */
+    private fun sendSpeechResultToReactNative(text: String) {
+        try {
+            val params = JSONObject()
+            params.put("text", text)
+            
+            Handler(Looper.getMainLooper()).post {
+                val reactContext = context as? ReactApplicationContext
+                reactContext?.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+                    ?.emit(Constants.Actions.SPEECH_RESULT, params.toString())
+            }
+            
+            Log.d(TAG, "Speech result sent to React Native")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error sending speech result to React Native: ${e.message}", e)
+        }
+    }
+    
+    /**
+     * Process incoming audio data for speech recognition
+     */
+    fun processAudioData(audioData: ByteArray, size: Int) {
+        if (_voiceState.value != VoiceState.LISTENING) {
+            // Only process audio data when we're actively listening
+            return
+        }
+        
+        try {
+            Log.d(TAG, "Processing audio data of size: $size bytes")
+            
+            // Save audio data to temporary file for Whisper processing
+            val tempFile = File.createTempFile("whisper_audio_", ".wav", context.cacheDir)
+            FileOutputStream(tempFile).use { fos ->
+                // Write WAV header
+                writeWavHeader(fos, size)
+                
+                // Write audio data
+                fos.write(audioData, 0, size)
+                fos.flush()
+            }
+            
+            Log.d(TAG, "Audio saved to temporary file: ${tempFile.absolutePath}")
+            
+            // Process audio file with Whisper
+            coroutineScope.launch {
+                try {
+                    // Update state to processing
+                    updateState(VoiceState.PROCESSING)
+                    
+                    // Transcribe the audio using Whisper
+                    val transcript = whisperClient.transcribeAudio(tempFile)
+                    
+                    if (transcript.isNotEmpty()) {
+                        Log.i(TAG, "Whisper transcription successful: '$transcript'")
+                        processSpeechResult(transcript)
+                    } else {
+                        Log.w(TAG, "Empty transcription result from Whisper")
+                        // Reset to listening state to continue capturing audio
+                        updateState(VoiceState.LISTENING)
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error transcribing audio with Whisper: ${e.message}", e)
+                    showError("Error transcribing speech: ${e.message}")
+                } finally {
+                    // Delete the temporary file
+                    tempFile.delete()
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error processing audio data: ${e.message}", e)
+        }
+    }
+    
+    /**
+     * Write WAV header for the audio file
+     */
+    private fun writeWavHeader(outputStream: OutputStream, audioDataSize: Int) {
+        // Standard WAV header for 16-bit PCM, 16kHz, mono
+        val sampleRate = 16000
+        val channels = 1
+        val bitsPerSample = 16
+        
+        try {
+            // RIFF header
+            outputStream.write("RIFF".toByteArray()) // ChunkID
+            writeInt(outputStream, 36 + audioDataSize) // ChunkSize
+            outputStream.write("WAVE".toByteArray()) // Format
+            
+            // fmt subchunk
+            outputStream.write("fmt ".toByteArray()) // Subchunk1ID
+            writeInt(outputStream, 16) // Subchunk1Size (16 for PCM)
+            writeShort(outputStream, 1) // AudioFormat (1 for PCM)
+            writeShort(outputStream, channels) // NumChannels
+            writeInt(outputStream, sampleRate) // SampleRate
+            writeInt(outputStream, sampleRate * channels * bitsPerSample / 8) // ByteRate
+            writeShort(outputStream, channels * bitsPerSample / 8) // BlockAlign
+            writeShort(outputStream, bitsPerSample) // BitsPerSample
+            
+            // data subchunk
+            outputStream.write("data".toByteArray()) // Subchunk2ID
+            writeInt(outputStream, audioDataSize) // Subchunk2Size
+        } catch (e: Exception) {
+            Log.e(TAG, "Error writing WAV header: ${e.message}", e)
+        }
+    }
+    
+    /**
+     * Helper method to write an integer to output stream in little-endian format
+     */
+    private fun writeInt(outputStream: OutputStream, value: Int) {
+        outputStream.write(value and 0xFF)
+        outputStream.write(value shr 8 and 0xFF)
+        outputStream.write(value shr 16 and 0xFF)
+        outputStream.write(value shr 24 and 0xFF)
+    }
+    
+    /**
+     * Helper method to write a short to output stream in little-endian format
+     */
+    private fun writeShort(outputStream: OutputStream, value: Int) {
+        outputStream.write(value and 0xFF)
+        outputStream.write(value shr 8 and 0xFF)
+    }
+    
+    /**
      * Voice states for the state machine
      */
     sealed class VoiceState {
@@ -611,5 +820,6 @@ class VoiceManager private constructor() {
         object PROCESSING : VoiceState()
         data class RESPONDING(val message: String) : VoiceState()
         data class ERROR(val message: String) : VoiceState()
+        object SPEAKING : VoiceState()
     }
 } 
