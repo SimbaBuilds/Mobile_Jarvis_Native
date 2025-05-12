@@ -24,12 +24,6 @@ object Constants {
     object Config {
         const val PICOVOICE_ACCESS_KEY = "picovoice_access_key"
         const val OPENAI_API_KEY = "openai_api_key"
-        const val GOOGLE_API_KEY = "google_api_key"
-        const val WEATHER_API_KEY = "weather_api_key"
-        const val NEWS_API_KEY = "news_api_key"
-        const val VAPI_API_KEY = "vapi_api_key"
-        const val VAPI_ASSISTANT_ID = "vapi_assistant_id"
-        const val MISTRAL_API_KEY = "mistral_api_key"
         const val ELEVENLABS_API_KEY = "elevenlabs_api_key"
         const val DEEPGRAM_API_KEY = "deepgram_api_key"
     }

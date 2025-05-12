@@ -5,6 +5,16 @@ alwaysApply: false
 ---
 Note: This is a react native app in expo with kotlin and java native plugins 
 
+Connect to physical Android if necessary
+1. adb devices | cat
+2. adb mdns services | cat
+3. adb connect 192.168.1.121:35687 | cat
+
+Solving Port Issues:
+lsof -ti:8081 | xargs kill -9
+lsof -ti:8082 | xargs kill -9
+REACT_NATIVE_PACKAGER_HOSTNAME=127.0.0.1 npx expo start --dev-client --localhost
+
 Native Build (Java/Kotlin/Swift/Objective-C):
 1. run cd android && ./gradlew :app:compileDebugKotlin for surface level (dependecy check) debug 
 2. run npx expo run:android
@@ -17,3 +27,7 @@ If no native (kotlin/java) changes:
 - human will scan QR code in Expo Go app (Android)
 - TS/JS changes appear immediately eith hot reloading
 
+Example logcat debugging commands:
+1. adb logcat -d | grep -i "picovoice" | tail -20 | cat
+2. adb logcat -d | head -10 | cat
+3. adb logcat -c
