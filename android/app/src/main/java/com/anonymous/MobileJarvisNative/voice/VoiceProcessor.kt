@@ -75,7 +75,7 @@ interface VoiceProcessor {
     fun isSpeaking(): Boolean
     
     /**
-     * Clean up resources
+     * Shutdown and clean up resources
      */
     fun shutdown()
 

@@ -5,6 +5,8 @@ import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.Promise
+import com.facebook.react.bridge.WritableMap
+import com.facebook.react.bridge.Arguments
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -125,9 +127,27 @@ class VoiceModule(private val reactContext: ReactApplicationContext) : ReactCont
      * Send an event to JavaScript
      */
     private fun sendEvent(eventName: String, params: Map<String, Any>) {
+        val writableMap = params.toWritableMap()
         reactContext
             .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-            .emit(eventName, params)
+            .emit(eventName, writableMap)
+    }
+
+    // Helper extension function to convert Map<String, Any> to WritableMap
+    private fun Map<String, Any>.toWritableMap(): WritableMap {
+        val writableMap = Arguments.createMap()
+        for ((key, value) in this) {
+            when (value) {
+                is String -> writableMap.putString(key, value)
+                is Int -> writableMap.putInt(key, value)
+                is Double -> writableMap.putDouble(key, value)
+                is Boolean -> writableMap.putBoolean(key, value)
+                is Float -> writableMap.putDouble(key, value.toDouble())
+                is Long -> writableMap.putDouble(key, value.toDouble())
+                else -> writableMap.putString(key, value.toString())
+            }
+        }
+        return writableMap
     }
 
     /**

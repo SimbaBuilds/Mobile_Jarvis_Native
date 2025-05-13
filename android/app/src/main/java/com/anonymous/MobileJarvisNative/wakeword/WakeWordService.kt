@@ -65,23 +65,14 @@ class WakeWordService : Service() {
     
     override fun onCreate() {
         super.onCreate()
-        Log.i(TAG, "Service onCreate called")
-        
+        Log.i(TAG, "Service onCreate called (WakeWordService)")
         instance = this
         isServiceRunning = true
-        
-        // Initialize minimal requirements
         prefs = getSharedPreferences("wakeword_prefs", Context.MODE_PRIVATE)
-        
-        // First create the notification channel
         createNotificationChannel()
-        
-        // Start foreground immediately, but on the main thread
         serviceScope.launch(Dispatchers.Main) {
             startForegroundWithNotification()
         }
-        
-        // Register broadcast receiver for pause/resume commands
         registerPauseResumeReceiver()
     }
 
@@ -106,21 +97,18 @@ class WakeWordService : Service() {
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.i(TAG, "Service onStartCommand called")
-        
-        // Complete initialization on main thread first for any UI operations
+        Log.i(TAG, "Service onStartCommand called (WakeWordService)")
+        Log.i(TAG, "Launching foreground notification and initialization coroutine")
         serviceScope.launch(Dispatchers.Main) {
             try {
-                // Try startForeground again in case onCreate failed
                 startForegroundWithNotification()
-                
-                // Show toast on main thread
                 Toast.makeText(this@WakeWordService, "Jarvis detection service starting...", Toast.LENGTH_SHORT).show()
-                
-                // Then initialize the rest in a background thread
+                Log.i(TAG, "Foreground started, launching initializeService() in IO")
                 serviceScope.launch(Dispatchers.IO) {
                     try {
+                        Log.i(TAG, "Calling initializeService()...")
                         initializeService()
+                        Log.i(TAG, "initializeService() completed")
                     } catch (e: Exception) {
                         Log.e(TAG, "Error in service initialization: ${e.message}", e)
                         serviceScope.launch(Dispatchers.Main) {
@@ -134,7 +122,6 @@ class WakeWordService : Service() {
                 stopSelf()
             }
         }
-        
         return START_STICKY
     }
 
@@ -142,24 +129,19 @@ class WakeWordService : Service() {
      * Initialize the service after it has been started in foreground
      */
     private fun initializeService() {
-        if (isServiceRunning) {
-            Log.w(TAG, "Service already running, stopping duplicate service")
-            stopSelf()
-            return
-        }
-        
+        Log.i(TAG, "Entered initializeService()")
         try {
-            // Initialize ConfigManager
             ConfigManager.init(this)
             configManager = ConfigManager.getInstance()
-            
-            // Check if wake word detection is enabled
+            Log.i(TAG, "ConfigManager initialized")
             if (!isWakeWordEnabled()) {
                 Log.i(TAG, "Wake word detection is disabled")
                 stopSelf()
+                Log.i(TAG, "Exiting initializeService() because wake word is disabled")
                 return
             }
-
+            Log.i(TAG, "Calling initWakeWordDetection() from initializeService()")
+            
             isServiceRunning = true
             isRunning = true
             

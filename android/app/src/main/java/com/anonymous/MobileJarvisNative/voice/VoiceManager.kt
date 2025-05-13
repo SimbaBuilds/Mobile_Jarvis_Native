@@ -237,17 +237,26 @@ class VoiceManager private constructor() {
     }
     
     /**
-     * Play "Sir?" response using Deepgram TTS
+     * Play wake word response sound
      */
     private fun playWakeWordResponse() {
-        coroutineScope.launch {
-            try {
-                Log.i(TAG, "Playing wake word response: 'Sir?'")
-                deepgramClient.speak("Sir?")
-                Log.d(TAG, "Wake word response played successfully")
-            } catch (e: Exception) {
-                Log.e(TAG, "Error playing wake word response: ${e.message}", e)
+        try {
+            // Initialize Deepgram client if needed
+            deepgramClient.initialize()
+            // Use coroutineScope to handle the suspend function
+            coroutineScope.launch {
+                try {
+                    deepgramClient.speak("Sir?")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error using Deepgram for wake word response: ${e.message}", e)
+                    // Fall back to local TTS if Deepgram fails
+                    TextToSpeechManager.speak("Sir?")
+                }
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error initializing Deepgram: ${e.message}", e)
+            // Fall back to local TTS if Deepgram fails
+            TextToSpeechManager.speak("Sir?")
         }
     }
     
