@@ -38,12 +38,24 @@ class VoiceModule(private val reactContext: ReactApplicationContext) : ReactCont
     fun startListening(promise: Promise) {
         Log.d(TAG, "startListening called from JS")
         try {
+            // Ensure speech recognition is initialized
+            ensureSpeechRecognitionInitialized()
+            
             voiceManager.startListening()
             promise.resolve(true)
         } catch (e: Exception) {
             Log.e(TAG, "Error starting listening", e)
             promise.reject("ERR_VOICE_START", e.message, e)
         }
+    }
+
+    /**
+     * Ensure speech recognition is initialized
+     */
+    private fun ensureSpeechRecognitionInitialized() {
+        Log.d(TAG, "Ensuring speech recognition is initialized")
+        // Re-initialize voice manager
+        voiceManager.initialize()
     }
 
     /**

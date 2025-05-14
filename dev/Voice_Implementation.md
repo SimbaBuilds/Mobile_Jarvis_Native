@@ -20,5 +20,5 @@ More relevant examples for this feature:
 2. Feature specific example: adb logcat -d | grep -i "whisper" | tail -20 | cat
 3. Feature specific example: adb logcat -d | grep -i "deepgram" | tail -20 | cat
 4. Feature specific example: adb logcat -d | grep -i "broadcast" | tail -20 | cat
-5. 4. Feature specific example: adb logcat -d | grep -i "picovoice" | tail -20 | cat
+5. Feature specific example: adb logcat -d | grep -i "VoiceManager" | tail -20 | cat
 

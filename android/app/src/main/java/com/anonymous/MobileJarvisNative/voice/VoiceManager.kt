@@ -140,6 +140,8 @@ class VoiceManager private constructor() {
         try {
             if (SpeechRecognizer.isRecognitionAvailable(context)) {
                 speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context)
+                // Set the recognition listener
+                speechRecognizer?.setRecognitionListener(createRecognitionListener())
                 isSpeechRecognitionInitialized = true
                 Log.d(TAG, "Speech recognizer initialized")
             } else {
@@ -240,23 +242,35 @@ class VoiceManager private constructor() {
      * Play wake word response sound
      */
     private fun playWakeWordResponse() {
+        Log.d(TAG, "Attempting to play wake word response...")
+        
+        // Use local TTS by default to avoid delays
         try {
-            // Initialize Deepgram client if needed
-            deepgramClient.initialize()
-            // Use coroutineScope to handle the suspend function
-            coroutineScope.launch {
-                try {
-                    deepgramClient.speak("Sir?")
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error using Deepgram for wake word response: ${e.message}", e)
-                    // Fall back to local TTS if Deepgram fails
-                    TextToSpeechManager.speak("Sir?")
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error initializing Deepgram: ${e.message}", e)
-            // Fall back to local TTS if Deepgram fails
             TextToSpeechManager.speak("Sir?")
+            Log.i(TAG, "Played wake word response using local TTS")
+            
+            // Try Deepgram in the background for next use
+            prepareDeepgramForFutureUse()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error playing wake word response: ${e.message}", e)
+        }
+    }
+    
+    /**
+     * Prepare Deepgram for future use without blocking current flow
+     */
+    private fun prepareDeepgramForFutureUse() {
+        coroutineScope.launch {
+            try {
+                // Initialize Deepgram client if needed
+                if (!::deepgramClient.isInitialized) {
+                    deepgramClient = DeepgramClient(context)
+                }
+                deepgramClient.initialize()
+                Log.d(TAG, "Deepgram client initialized for future use")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error initializing Deepgram for future use: ${e.message}", e)
+            }
         }
     }
     
@@ -264,10 +278,19 @@ class VoiceManager private constructor() {
      * Start listening for speech input
      */
     fun startListening() {
+        Log.d(TAG, "startListening() called. Attempting to start speech recognition...")
         if (!isListening) {
+            // Check if speechRecognizer is still valid
+            if (speechRecognizer == null || !isSpeechRecognitionInitialized) {
+                Log.w(TAG, "Speech recognizer was null or not initialized, reinitializing...")
+                initializeSpeechRecognition()
+            }
+            
             isListening = true
             _voiceState.value = VoiceState.LISTENING
+            Log.d(TAG, "SpeechRecognizer is starting to listen for user input.")
             speechRecognizer?.startListening(createRecognizerIntent())
+            Log.i(TAG, "SpeechRecognizer started listening.")
         }
     }
     
@@ -276,9 +299,11 @@ class VoiceManager private constructor() {
      */
     fun stopListening() {
         if (isListening) {
+            Log.d(TAG, "stopListening() called. Stopping speech recognition...")
             isListening = false
             _voiceState.value = VoiceState.IDLE
             speechRecognizer?.stopListening()
+            Log.i(TAG, "SpeechRecognizer stopped listening.")
         }
     }
     

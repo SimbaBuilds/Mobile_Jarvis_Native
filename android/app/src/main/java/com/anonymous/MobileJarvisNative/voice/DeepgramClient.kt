@@ -97,8 +97,20 @@ class DeepgramClient(private val context: Context) {
             val response = okHttpClient.newCall(request).execute()
             if (!response.isSuccessful) {
                 val errorBody = response.body?.string() ?: "Unknown error"
-                Log.e(TAG, "Error from Deepgram API: ${response.code}, body: $errorBody")
-                throw IOException("Deepgram API error: ${response.code}")
+                val errorCode = response.code
+                Log.e(TAG, "Error from Deepgram API: $errorCode, body: $errorBody")
+                
+                // Parse error details if available
+                try {
+                    val errorJson = JSONObject(errorBody)
+                    val errorMessage = errorJson.optString("error", "Unknown error")
+                    val errorDetails = errorJson.optString("message", "")
+                    Log.e(TAG, "Deepgram error details: $errorMessage - $errorDetails")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Could not parse error response: ${e.message}")
+                }
+                
+                throw IOException("Deepgram API error: $errorCode")
             }
             
             // Save audio to temporary file
