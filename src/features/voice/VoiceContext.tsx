@@ -33,6 +33,7 @@ interface VoiceProviderProps {
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  type: 'text' | 'image';
   timestamp: number;
 }
 
@@ -67,6 +68,7 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
         const assistantMessage: ChatMessage = {
           role: 'assistant',
           content: apiResponse.response,
+          type: 'text',
           timestamp: apiResponse.timestamp || Date.now()
         };
         
@@ -104,6 +106,7 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
       const userMessage: ChatMessage = {
         role: 'user',
         content: event.text,
+        type: 'text',
         timestamp: Date.now()
       };
       

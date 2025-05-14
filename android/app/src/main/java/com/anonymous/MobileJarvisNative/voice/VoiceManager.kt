@@ -80,7 +80,7 @@ class VoiceManager private constructor() {
         
         // Constants
         const val MAX_NO_SPEECH_RETRIES = 2
-        const val RECOGNITION_DEBOUNCE_MS = 1000L
+        const val RECOGNITION_DEBOUNCE_MS = 3000L
         const val MAX_SPEECH_RECOGNITION_RETRY_COUNT = 3
         
         fun getInstance(): VoiceManager {

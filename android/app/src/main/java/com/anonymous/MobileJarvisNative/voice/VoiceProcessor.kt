@@ -6,6 +6,7 @@ import com.anonymous.MobileJarvisNative.utils.TextToSpeechManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -13,6 +14,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.MediaType.Companion.toMediaType
 import java.io.File
 import java.util.concurrent.TimeUnit
+import com.anonymous.MobileJarvisNative.network.ApiClient
 
 /**
  * Interface for voice processing strategy
@@ -200,6 +202,9 @@ class ModularVoiceProcessor(private val context: Context) : VoiceProcessor {
     private var isSpeaking = false
     private val cacheDir = File(context.cacheDir, "tts_cache")
     
+    // API client for server communication
+    private val apiClient = ApiClient()
+    
     override fun initialize() {
         Log.i(TAG, "Initializing modular voice processor")
         try {
@@ -224,16 +229,25 @@ class ModularVoiceProcessor(private val context: Context) : VoiceProcessor {
     override fun processText(text: String, onResult: (String) -> Unit) {
         Log.i(TAG, "Processing text with modular processor: $text")
         try {
-            // Using the LLM service for processing - launching in a coroutine
+            // Process with API server
             CoroutineScope(Dispatchers.IO).launch {
                 try {
-                    // This would be replaced with actual LLM API call
-                    // Simplified example implementation
-                    val response = "I processed your request: \"$text\" using the modular processor"
-                    onResult(response)
+                    Log.d(TAG, "About to make API request for text: '$text'")
+                    
+                    // Make API request using ApiClient
+                    val response = apiClient.sendTextRequestSync(text)
+                    
+                    Log.i(TAG, "API response received: '$response'")
+                    
+                    // Return to main thread
+                    withContext(Dispatchers.Main) {
+                        onResult(response)
+                    }
                 } catch (e: Exception) {
-                    Log.e(TAG, "Error in LLM processing coroutine", e)
-                    onResult("Error processing your request: ${e.message}")
+                    Log.e(TAG, "Error in API request", e)
+                    withContext(Dispatchers.Main) {
+                        onResult("Error processing your request: ${e.message}")
+                    }
                 }
             }
         } catch (e: Exception) {

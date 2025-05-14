@@ -21,7 +21,7 @@ export interface ServerApiConfig {
 export interface ChatRequest {
   message: string;
   timestamp: number;
-  history: ChatMessage[];
+  history: ChatMessage[]; // role, content, type, timestamp
   preferences?: {
     voice?: string;
     response_type?: string;
