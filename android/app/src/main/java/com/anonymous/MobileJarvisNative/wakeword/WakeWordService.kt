@@ -321,7 +321,7 @@ class WakeWordService : Service() {
             Log.d(TAG, "Setting up with keyword: ${keywords[0].name}")
             
             // Sensitivity (0.0-1.0), higher means more sensitive but more false positives
-            val sensitivities = floatArrayOf(0.7f)
+            val sensitivities = floatArrayOf(0.3f)
             Log.d(TAG, "Setting sensitivity to: ${sensitivities[0]}")
             
             try {
