@@ -20,6 +20,7 @@ import kotlinx.coroutines.launch
 import org.json.JSONObject
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.anonymous.MobileJarvisNative.utils.Constants
+import com.anonymous.MobileJarvisNative.ConfigManager
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStream
@@ -30,7 +31,7 @@ import java.io.OutputStream
  * This class serves as the central coordinator for:
  * - Wake word detection
  * - Speech recognition
- * - Voice processing (Modular or Vapi services)
+ * - Voice processing (Modular Services)
  * - Text-to-speech output
  */
 class VoiceManager private constructor() {
@@ -58,6 +59,9 @@ class VoiceManager private constructor() {
     private var lastRecognitionStartTime = 0L
     private var speechRecognitionRetryCount = 0
     
+    // Config manager
+    private lateinit var configManager: ConfigManager
+    
     // Callback registry
     private val stateChangeCallbacks = mutableListOf<(VoiceState) -> Unit>()
     
@@ -79,9 +83,9 @@ class VoiceManager private constructor() {
         private var instance: VoiceManager? = null
         
         // Constants
-        const val MAX_NO_SPEECH_RETRIES = 2
-        const val RECOGNITION_DEBOUNCE_MS = 3000L
-        const val MAX_SPEECH_RECOGNITION_RETRY_COUNT = 3
+        private const val RECOGNITION_DEBOUNCE_MS = 3000L
+        private const val MAX_SPEECH_RECOGNITION_RETRY_COUNT = 3
+        private var MAX_NO_SPEECH_RETRIES = 2 // Will be overridden from config
         
         fun getInstance(): VoiceManager {
             return instance ?: synchronized(this) {
@@ -95,6 +99,12 @@ class VoiceManager private constructor() {
      */
     fun initialize(context: Context) {
         this.context = context
+        
+        // Initialize ConfigManager
+        configManager = ConfigManager.getInstance()
+        
+        // Update constants from config
+        MAX_NO_SPEECH_RETRIES = configManager.getMaxNoSpeechRetries()
         
         // Create default processor (Modular)
         voiceProcessor = ModularVoiceProcessor(context)
@@ -279,29 +289,43 @@ class VoiceManager private constructor() {
      */
     fun startListening() {
         Log.d(TAG, "startListening() called. Attempting to start speech recognition...")
-        if (!isListening) {
-            // Check if speechRecognizer is still valid
-            if (speechRecognizer == null || !isSpeechRecognitionInitialized) {
-                Log.w(TAG, "Speech recognizer was null or not initialized, reinitializing...")
-                initializeSpeechRecognition()
-            }
-            
+        
+        // Always ensure wake word detection is paused when actively listening
+        try {
+            val intent = Intent("com.anonymous.MobileJarvisNative.PAUSE_WAKE_WORD_KEEP_LISTENING")
+            context.sendBroadcast(intent)
+            Log.d(TAG, "Sent broadcast to pause wake word detection during listening")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error sending pause wake word broadcast: ${e.message}", e)
+        }
+        
+        // Check if we're already listening to avoid duplicate requests
+        if (isListening) {
+            Log.d(TAG, "Already listening, ignoring startListening() call")
+            return
+        }
+        
+        // Check if speechRecognizer is still valid and reinitialize if needed
+        if (speechRecognizer == null || !isSpeechRecognitionInitialized) {
+            Log.w(TAG, "Speech recognizer was null or not initialized, reinitializing...")
+            initializeSpeechRecognition()
+        }
+        
+        try {
+            // Update state before starting recognition
             isListening = true
-            _voiceState.value = VoiceState.LISTENING
-            Log.d(TAG, "SpeechRecognizer is starting to listen for user input.")
+            updateState(VoiceState.LISTENING)
+            
+            // Start the actual speech recognizer
             speechRecognizer?.startListening(createRecognizerIntent())
             Log.i(TAG, "SpeechRecognizer started listening.")
             
-            // Explicitly tell any wake word service to remain paused
-            try {
-                val intent = Intent("com.anonymous.MobileJarvisNative.PAUSE_WAKE_WORD_KEEP_LISTENING")
-                context.sendBroadcast(intent)
-                Log.d(TAG, "Sent broadcast to ensure wake word detection remains paused during listening")
-            } catch (e: Exception) {
-                Log.e(TAG, "Error sending pause wake word broadcast: ${e.message}", e)
-            }
-        } else {
-            Log.d(TAG, "Already listening, ignoring startListening() call")
+            // Set timestamp to detect potential hangs
+            lastRecognitionStartTime = System.currentTimeMillis()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error starting speech recognition: ${e.message}", e)
+            isListening = false
+            _voiceState.value = VoiceState.ERROR("Failed to start speech recognition: ${e.message}")
         }
     }
     
@@ -326,10 +350,27 @@ class VoiceManager private constructor() {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-            // Increase timeouts for better UX
-            // putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 5000) // 5s silence to end
-            // putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 2500) // 2.5s possible silence
-            // putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 3000) // Minimum 3s listening
+            
+            // Get timing parameters from ConfigManager
+            val minLengthMs = configManager.getSpeechRecognitionMinimumLengthMs()
+            val completeSilenceMs = configManager.getSpeechRecognitionCompleteSilenceMs()
+            val possibleSilenceMs = configManager.getSpeechRecognitionPossibleSilenceMs()
+            
+            // Log the values regardless of whether they'll be used
+            Log.d(TAG, "Speech recognition parameters: minLength=$minLengthMs, " +
+                      "completeSilence=$completeSilenceMs, possibleSilence=$possibleSilenceMs")
+            
+            // Only apply custom parameters if explicitly enabled in config
+            if (configManager.useCustomRecognizerParams()) {
+                Log.i(TAG, "Applying custom timing parameters to SpeechRecognizer")
+                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, minLengthMs)
+                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, completeSilenceMs)
+                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, possibleSilenceMs)
+            } else {
+                Log.i(TAG, "Using Android default timing parameters for SpeechRecognizer")
+                // Use Android defaults for RecognizerIntent parameters, but still use our
+                // custom timing values for the rest of the voice processing pipeline
+            }
         }
     }
     
@@ -447,12 +488,19 @@ class VoiceManager private constructor() {
         // Update state to PROCESSING
         updateState(VoiceState.PROCESSING)
         
+        // Log the start of API processing
+        Log.d(TAG, "Starting API processing for recognized text")
+        
         // Process with voice processor
         try {
+            Log.d(TAG, "Sending text to voice processor for processing")
             voiceProcessor.processText(text) { response ->
+                Log.d(TAG, "Received response from voice processor, length: ${response.length} chars")
+                
                 if (response.isNotEmpty()) {
                     // Update state to RESPONDING
                     _voiceState.value = VoiceState.RESPONDING(response)
+                    Log.i(TAG, "Processing complete, responding to user")
                     
                     // Speak the response
                     voiceProcessor.speak(response) {
@@ -599,7 +647,29 @@ class VoiceManager private constructor() {
      * Update the voice state and notify registered callbacks
      */
     internal fun updateState(newState: VoiceState) {
-        Log.d(TAG, "Updating voice state from ${_voiceState.value.javaClass.simpleName} to ${newState.javaClass.simpleName}")
+        val oldState = _voiceState.value
+        Log.d(TAG, "Voice state transition: ${oldState.javaClass.simpleName} -> ${newState.javaClass.simpleName}")
+        
+        // If transitioning to PROCESSING state, log details about speech recognition
+        if (newState is VoiceState.PROCESSING && oldState is VoiceState.LISTENING) {
+            Log.i(TAG, "Speech recognition completed successfully, processing command")
+        }
+        
+        // If transitioning from PROCESSING to RESPONDING, log success
+        if (oldState is VoiceState.PROCESSING && newState is VoiceState.RESPONDING) {
+            Log.i(TAG, "Command processed successfully, generating response")
+        }
+        
+        // If transitioning to ERROR state, log detailed error information
+        if (newState is VoiceState.ERROR) {
+            Log.e(TAG, "Error in voice processing: ${newState.message}")
+            if (oldState is VoiceState.PROCESSING) {
+                Log.e(TAG, "Error occurred during command processing")
+            } else if (oldState is VoiceState.LISTENING) {
+                Log.e(TAG, "Error occurred during speech recognition")
+            }
+        }
+        
         _voiceState.value = newState
         
         // Manage wake word detection based on state
@@ -713,13 +783,19 @@ class VoiceManager private constructor() {
             // Show message to the user
             showMessage("I didn't hear anything. Listening again...")
             
-            // Try again after a short delay
+            // Try again after a customizable delay
             coroutineScope.launch {
-                delay(500) // Short delay before retrying
+                // Get configurable delay from ConfigManager
+                val retryDelayMs = configManager.getSpeechRetryDelayMs().toLong()
+                Log.d(TAG, "Will retry speech recognition after $retryDelayMs ms")
+                delay(retryDelayMs)
                 
                 try {
                     Log.d(TAG, "Retrying speech recognition (attempt $noSpeechRetryCount)")
                     startListening()
+                    
+                    // Log listening state for debugging
+                    Log.d(TAG, "Speech recognition restarted, listening state: $isListening, voice state: ${_voiceState.value.javaClass.simpleName}")
                 } catch (e: Exception) {
                     Log.e(TAG, "Error retrying speech recognition: ${e.message}", e)
                     showError("Unable to restart voice recognition")
@@ -736,7 +812,10 @@ class VoiceManager private constructor() {
             
             // Allow message to be spoken before resetting
             coroutineScope.launch {
-                delay(2000) // Delay to let the message be spoken
+                // Get configurable delay from ConfigManager
+                val finalMessageDelayMs = configManager.getSpeechFinalMessageDelayMs().toLong()
+                Log.d(TAG, "Will reset to idle after $finalMessageDelayMs ms")
+                delay(finalMessageDelayMs)
                 resetToIdle()
             }
         }
@@ -903,6 +982,38 @@ class VoiceManager private constructor() {
     private fun writeShort(outputStream: OutputStream, value: Int) {
         outputStream.write(value and 0xFF)
         outputStream.write(value shr 8 and 0xFF)
+    }
+    
+    /**
+     * Process a test phrase directly (for debugging)
+     * This bypasses the speech recognition system and directly processes a text input
+     * 
+     * @param testPhrase The phrase to process
+     * @return Boolean indicating success
+     */
+    fun processTestPhrase(testPhrase: String): Boolean {
+        if (testPhrase.isBlank()) {
+            Log.w(TAG, "Cannot process empty test phrase")
+            return false
+        }
+        
+        Log.i(TAG, "Processing test phrase: \"$testPhrase\"")
+        
+        try {
+            // Update state to simulate wake word and listening
+            updateState(VoiceState.WAKE_WORD_DETECTED)
+            
+            // Brief delay to simulate state transition
+            Handler(Looper.getMainLooper()).postDelayed({
+                // Call onSpeechRecognized directly with the test phrase
+                onSpeechRecognized(testPhrase)
+            }, 300)
+            
+            return true
+        } catch (e: Exception) {
+            Log.e(TAG, "Error processing test phrase: ${e.message}", e)
+            return false
+        }
     }
     
     /**

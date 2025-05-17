@@ -82,6 +82,69 @@ class ConfigManager private constructor(private val context: Context) {
         return properties.getProperty(key, defaultValue)
     }
     
+    /**
+     * Get speech recognition minimum length in milliseconds
+     */
+    fun getSpeechRecognitionMinimumLengthMs(): Int {
+        val defaultValue = 4000
+        val propertyValue = properties.getProperty(Constants.Config.SPEECH_RECOGNITION_MINIMUM_LENGTH_MS, defaultValue.toString())
+        return propertyValue.toIntOrNull() ?: defaultValue
+    }
+    
+    /**
+     * Get speech recognition complete silence length in milliseconds
+     */
+    fun getSpeechRecognitionCompleteSilenceMs(): Int {
+        val defaultValue = 3500
+        val propertyValue = properties.getProperty(Constants.Config.SPEECH_RECOGNITION_COMPLETE_SILENCE_MS, defaultValue.toString())
+        return propertyValue.toIntOrNull() ?: defaultValue
+    }
+    
+    /**
+     * Get speech recognition possible silence length in milliseconds
+     */
+    fun getSpeechRecognitionPossibleSilenceMs(): Int {
+        val defaultValue = 2500
+        val propertyValue = properties.getProperty(Constants.Config.SPEECH_RECOGNITION_POSSIBLE_SILENCE_MS, defaultValue.toString())
+        return propertyValue.toIntOrNull() ?: defaultValue
+    }
+    
+    /**
+     * Get speech retry delay in milliseconds
+     */
+    fun getSpeechRetryDelayMs(): Int {
+        val defaultValue = 800
+        val propertyValue = properties.getProperty(Constants.Config.SPEECH_RETRY_DELAY_MS, defaultValue.toString())
+        return propertyValue.toIntOrNull() ?: defaultValue
+    }
+    
+    /**
+     * Get speech final message delay in milliseconds
+     */
+    fun getSpeechFinalMessageDelayMs(): Int {
+        val defaultValue = 2500
+        val propertyValue = properties.getProperty(Constants.Config.SPEECH_FINAL_MESSAGE_DELAY_MS, defaultValue.toString())
+        return propertyValue.toIntOrNull() ?: defaultValue
+    }
+    
+    /**
+     * Get max no speech retries
+     */
+    fun getMaxNoSpeechRetries(): Int {
+        val defaultValue = 2
+        val propertyValue = properties.getProperty(Constants.Config.SPEECH_MAX_NO_SPEECH_RETRIES, defaultValue.toString())
+        return propertyValue.toIntOrNull() ?: defaultValue
+    }
+    
+    /**
+     * Check if custom recognizer parameters should be used
+     */
+    fun useCustomRecognizerParams(): Boolean {
+        val defaultValue = false
+        val propertyValue = properties.getProperty(Constants.Config.USE_CUSTOM_RECOGNIZER_PARAMS, defaultValue.toString())
+        return propertyValue.toBoolean()
+    }
+    
     companion object {
         private var instance: ConfigManager? = null
         
