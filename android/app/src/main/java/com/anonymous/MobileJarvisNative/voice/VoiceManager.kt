@@ -79,7 +79,7 @@ class VoiceManager private constructor() {
         private var instance: VoiceManager? = null
         
         // Constants
-        const val MAX_NO_SPEECH_RETRIES = 3
+        const val MAX_NO_SPEECH_RETRIES = 2
         const val RECOGNITION_DEBOUNCE_MS = 3000L
         const val MAX_SPEECH_RECOGNITION_RETRY_COUNT = 3
         
@@ -712,40 +712,21 @@ class VoiceManager private constructor() {
                 } catch (e: Exception) {
                     Log.e(TAG, "Error retrying speech recognition: ${e.message}", e)
                     showError("Unable to restart voice recognition")
-                    // Don't reset to idle, try one more time 
-                    coroutineScope.launch {
-                        delay(1000)
-                        try {
-                            Log.d(TAG, "Second retry for speech recognition")
-                            startListening()
-                        } catch (secondError: Exception) {
-                            Log.e(TAG, "Error on second retry: ${secondError.message}", secondError)
-                            // Only now reset to idle
-                            resetToIdle()
-                        }
-                    }
+                    resetToIdle()
                 }
             }
         } else {
-            // Max retries reached, but instead of going to idle, let's try to stay in listening mode
-            Log.d(TAG, "Maximum retry attempts reached ($MAX_NO_SPEECH_RETRIES), asking user to speak again")
-            showMessage("I didn't hear anything. Please try speaking again.")
+            // Max retries reached, reset to idle
+            Log.d(TAG, "Maximum retry attempts reached ($MAX_NO_SPEECH_RETRIES), resetting to idle")
+            showMessage("I didn't hear anything. Please try saying 'Jarvis' again when you're ready.")
             
             // Reset counter
             noSpeechRetryCount = 0
             
-            // Try to restart listening after message is spoken
+            // Allow message to be spoken before resetting
             coroutineScope.launch {
                 delay(2000) // Delay to let the message be spoken
-                try {
-                    Log.d(TAG, "Starting listening again after max retries")
-                    updateState(VoiceState.LISTENING)
-                    startListening()
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to restart listening after max retries: ${e.message}", e)
-                    // Now we can go to idle
-                    resetToIdle()
-                }
+                resetToIdle()
             }
         }
     }
