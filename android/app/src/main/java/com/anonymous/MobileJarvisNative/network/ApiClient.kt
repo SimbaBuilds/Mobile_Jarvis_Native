@@ -30,7 +30,8 @@ class ApiClient {
             val urls = listOf(
                 "http://0.0.0.0:8000/api/chat",
                 "http://localhost:8000/api/chat", 
-                "http://192.168.1.131:8000/api/chat"
+                "http://192.168.1.131:8000/api/chat",
+                "https://mobile-jarvis-backend.onrender.com/api/chat"
             )
             
             // Create JSON payload
