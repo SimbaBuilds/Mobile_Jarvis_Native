@@ -456,8 +456,13 @@ class VoiceManager private constructor() {
                     
                     // Speak the response
                     voiceProcessor.speak(response) {
-                        // Return to idle when done speaking
-                        updateState(VoiceState.IDLE)
+                        // Don't return to idle when done speaking, set to LISTENING instead
+                        Log.i(TAG, "TTS complete, setting state to LISTENING to continue conversation")
+                        
+                        // Add a short delay for better transition
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            updateState(VoiceState.LISTENING)
+                        }, 300)
                     }
                 } else {
                     Log.w(TAG, "Received empty response from voice processor")
@@ -480,7 +485,13 @@ class VoiceManager private constructor() {
                             _voiceState.value = VoiceState.RESPONDING(response)
                             
                             voiceProcessor.speak(response) {
-                                updateState(VoiceState.IDLE)
+                                // Don't return to idle when done speaking, set to LISTENING instead
+                                Log.i(TAG, "TTS complete (from modular fallback), setting state to LISTENING to continue conversation")
+                                
+                                // Add a short delay for better transition
+                                Handler(Looper.getMainLooper()).postDelayed({
+                                    updateState(VoiceState.LISTENING)
+                                }, 300)
                             }
                         } else {
                             Log.w(TAG, "Received empty response from modular processor")
@@ -701,15 +712,41 @@ class VoiceManager private constructor() {
                 } catch (e: Exception) {
                     Log.e(TAG, "Error retrying speech recognition: ${e.message}", e)
                     showError("Unable to restart voice recognition")
-                    resetToIdle()
+                    // Don't reset to idle, try one more time 
+                    coroutineScope.launch {
+                        delay(1000)
+                        try {
+                            Log.d(TAG, "Second retry for speech recognition")
+                            startListening()
+                        } catch (secondError: Exception) {
+                            Log.e(TAG, "Error on second retry: ${secondError.message}", secondError)
+                            // Only now reset to idle
+                            resetToIdle()
+                        }
+                    }
                 }
             }
         } else {
-            // Max retries reached, reset to idle
-            Log.d(TAG, "Maximum retry attempts reached ($MAX_NO_SPEECH_RETRIES), returning to idle")
-            showMessage("I didn't hear anything. Please try again later.")
-            resetToIdle()
-            noSpeechRetryCount = 0 // Reset counter
+            // Max retries reached, but instead of going to idle, let's try to stay in listening mode
+            Log.d(TAG, "Maximum retry attempts reached ($MAX_NO_SPEECH_RETRIES), asking user to speak again")
+            showMessage("I didn't hear anything. Please try speaking again.")
+            
+            // Reset counter
+            noSpeechRetryCount = 0
+            
+            // Try to restart listening after message is spoken
+            coroutineScope.launch {
+                delay(2000) // Delay to let the message be spoken
+                try {
+                    Log.d(TAG, "Starting listening again after max retries")
+                    updateState(VoiceState.LISTENING)
+                    startListening()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to restart listening after max retries: ${e.message}", e)
+                    // Now we can go to idle
+                    resetToIdle()
+                }
+            }
         }
     }
     
@@ -732,9 +769,10 @@ class VoiceManager private constructor() {
             // Send event to RN with the recognized text
             sendSpeechResultToReactNative(text)
             
-            // Reset back to idle after sending to RN
-            // React Native will handle further processing
-            updateState(VoiceState.IDLE)
+            // Don't reset back to idle after sending to RN
+            // Let React Native drive the state changes
+            Log.d(TAG, "Speech result sent to RN, maintaining PROCESSING state")
+            // Note: React Native will handle further processing and state management
         } catch (e: Exception) {
             Log.e(TAG, "Error processing speech: ${e.message}", e)
             showError("Error processing speech: ${e.message}")
