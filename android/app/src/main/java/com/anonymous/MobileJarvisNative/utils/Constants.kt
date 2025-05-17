@@ -28,6 +28,15 @@ object Constants {
         const val OPENAI_API_KEY = "openai_api_key"
         const val SERVER_API_BASE_URL = "server_api_base_url"
         const val SERVER_API_ENDPOINT = "server_api_endpoint"
+        
+        // Speech recognition config keys
+        const val SPEECH_RECOGNITION_MINIMUM_LENGTH_MS = "speech_recognition_minimum_length_ms"
+        const val SPEECH_RECOGNITION_COMPLETE_SILENCE_MS = "speech_recognition_complete_silence_ms"
+        const val SPEECH_RECOGNITION_POSSIBLE_SILENCE_MS = "speech_recognition_possible_silence_ms"
+        const val SPEECH_RETRY_DELAY_MS = "speech_retry_delay_ms"
+        const val SPEECH_FINAL_MESSAGE_DELAY_MS = "speech_final_message_delay_ms"
+        const val SPEECH_MAX_NO_SPEECH_RETRIES = "speech_max_no_speech_retries"
+        const val USE_CUSTOM_RECOGNIZER_PARAMS = "use_custom_recognizer_params"
     }
     
     // Intent extras
