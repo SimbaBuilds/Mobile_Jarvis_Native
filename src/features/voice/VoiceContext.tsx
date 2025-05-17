@@ -203,7 +203,35 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
   }, []);
   
   // Use directly the interruptSpeech from hook
-  const interruptSpeech = voiceStateFromHook.interruptSpeech;
+  const interruptSpeech = useCallback(async () => {
+    try {
+      console.log('🛑 Interrupting current speech');
+      
+      // Call the hook's interruptSpeech function
+      const result = await voiceStateFromHook.interruptSpeech();
+      
+      if (result) {
+        // Set response to empty to clear any visible response text
+        setResponse('');
+        
+        console.log('✅ Speech interrupted successfully, transitioning to LISTENING state');
+        
+        // Add a short delay to allow for native side state updates
+        setTimeout(() => {
+          // The native side should handle the transition to LISTENING state
+          // But we can log for debugging purposes
+          console.log('🎤 State after interruption:', voiceStateFromHook.voiceState);
+        }, 500);
+      } else {
+        console.log('❌ Failed to interrupt speech');
+      }
+      
+      return result;
+    } catch (err) {
+      console.error('Error interrupting speech:', err);
+      return false;
+    }
+  }, [voiceStateFromHook]);
   
   // Context value
   const value: VoiceContextValue = {

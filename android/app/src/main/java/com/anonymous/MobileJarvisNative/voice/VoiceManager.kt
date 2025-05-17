@@ -541,10 +541,21 @@ class VoiceManager private constructor() {
             }
         }
         
-        // If we successfully interrupted, update the state
+        // If we successfully interrupted, update the state to LISTENING
         if (interrupted) {
-            Log.i(TAG, "Successfully interrupted speech")
-            updateState(VoiceState.IDLE)
+            Log.i(TAG, "Successfully interrupted speech, changing to LISTENING state")
+            
+            // Add a short delay before switching to listening state for better UX
+            Handler(Looper.getMainLooper()).postDelayed({
+                updateState(VoiceState.LISTENING)
+                
+                // Start listening for speech input
+                try {
+                    startListening()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error starting listening after interruption: ${e.message}", e)
+                }
+            }, 300)
         }
         
         return interrupted

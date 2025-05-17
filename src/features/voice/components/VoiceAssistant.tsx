@@ -1,9 +1,11 @@
 import React from 'react';
-import { View, StyleSheet, ActivityIndicator, FlatList, Text } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, FlatList, Text, TouchableOpacity } from 'react-native';
 import { VoiceButton } from './VoiceButton';
 import { VoiceResponseDisplay } from './VoiceResponseDisplay';
 import { useVoice } from '../VoiceContext';
 import { VoiceStatusIndicator } from './VoiceStatusIndicator';
+import { VoiceState } from '../types/voice';
+import { Ionicons } from '@expo/vector-icons';
 
 interface VoiceAssistantProps {
   onSpeechResult?: (text: string) => void;
@@ -23,7 +25,8 @@ export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({
     voiceState,
     isError,
     chatHistory,
-    setTranscript
+    setTranscript,
+    interruptSpeech
   } = useVoice();
 
   // When a speech result is received, call the callback
@@ -39,6 +42,11 @@ export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({
       hour: '2-digit', 
       minute: '2-digit' 
     });
+  };
+
+  // Handler for interrupt button
+  const handleInterrupt = () => {
+    interruptSpeech();
   };
 
   if (isError) {
@@ -68,6 +76,17 @@ export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({
         <View style={styles.emptyChatContainer}>
           <Text style={styles.emptyChatText}>Say "Jarvis" to activate the assistant</Text>
         </View>
+      )}
+      
+      {isSpeaking && (
+        <TouchableOpacity 
+          style={styles.interruptButton}
+          onPress={handleInterrupt}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="hand-left" size={24} color="white" />
+          <Text style={styles.interruptButtonText}>Tap to interrupt</Text>
+        </TouchableOpacity>
       )}
       
       <View style={styles.buttonContainer}>
@@ -129,5 +148,21 @@ const styles = StyleSheet.create({
     color: '#888888',
     fontSize: 16,
     textAlign: 'center',
+  },
+  interruptButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#e74c3c',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 25,
+    marginBottom: 20,
+    alignSelf: 'center',
+  },
+  interruptButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    marginLeft: 8,
   },
 });
