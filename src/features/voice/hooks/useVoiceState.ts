@@ -20,7 +20,21 @@ export function useVoiceState() {
       voiceState === VoiceState.WAKE_WORD_DETECTED
     );
     
-    setIsSpeaking(voiceState === VoiceState.SPEAKING);
+    /**
+     * Important: We treat both SPEAKING and RESPONDING states as speaking states
+     * 
+     * The native VoiceManager.kt has two separate states:
+     * - SPEAKING: When TTS is playing
+     * - RESPONDING(message): Contains the response text being spoken
+     * 
+     * By treating both as "isSpeaking", we ensure the interrupt button appears
+     * in both states, letting users stop speech at any time.
+     */
+    setIsSpeaking(
+      voiceState === VoiceState.SPEAKING || 
+      String(voiceState).includes('RESPONDING')
+    );
+    
     setError(voiceState === VoiceState.ERROR);
   }, [voiceState]);
 
@@ -67,6 +81,13 @@ export function useVoiceState() {
     }
   };
 
+  /**
+   * Interrupts current speech and transitions to LISTENING state
+   * Calls the native interruptSpeech method that handles:
+   * 1. Stopping TTS playback
+   * 2. Changing state from RESPONDING/SPEAKING to LISTENING
+   * 3. Restarting speech recognition
+   */
   const interruptSpeech = async () => {
     try {
       return await VoiceService.getInstance().interruptSpeech();

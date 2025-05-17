@@ -44,9 +44,15 @@ export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({
     });
   };
 
-  // Handler for interrupt button
-  const handleInterrupt = () => {
-    interruptSpeech();
+  /**
+   * Handle interrupt button press
+   * This stops the current TTS playback and changes the state from SPEAKING/RESPONDING to LISTENING
+   * allowing the user to speak again without waiting for the current response to finish
+   */
+  const handleInterrupt = async () => {
+    console.log('Interrupting speech...');
+    const result = await interruptSpeech();
+    console.log('Interrupt result:', result);
   };
 
   if (isError) {
@@ -78,14 +84,17 @@ export const VoiceAssistant: React.FC<VoiceAssistantProps> = ({
         </View>
       )}
       
+      {/* Interrupt button - only shown when the assistant is speaking */}
       {isSpeaking && (
         <TouchableOpacity 
           style={styles.interruptButton}
           onPress={handleInterrupt}
           activeOpacity={0.7}
+          accessibilityLabel="Stop speaking"
+          accessibilityHint="Stops the current speech and allows you to speak again"
         >
-          <Ionicons name="hand-left" size={24} color="white" />
-          <Text style={styles.interruptButtonText}>Tap to interrupt</Text>
+          <Ionicons name="stop-circle" size={24} color="white" />
+          <Text style={styles.interruptButtonText}>Tap to Interrupt</Text>
         </TouchableOpacity>
       )}
       
@@ -154,15 +163,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#e74c3c',
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 25,
     marginBottom: 20,
     alignSelf: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
   interruptButtonText: {
     color: 'white',
     fontWeight: '600',
+    fontSize: 16,
     marginLeft: 8,
   },
 });
