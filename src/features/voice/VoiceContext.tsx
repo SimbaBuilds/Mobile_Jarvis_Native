@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode, useMemo } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode, useMemo, useRef } from 'react';
 import { VoiceState, VoiceContextValue } from './types/voice';
 import VoiceService from './VoiceService';
 import { useServerApi } from '../../api/useServerApi';
+import { useVoiceState as useVoiceStateHook } from './hooks/useVoiceState';
 
 // Create context with default values
 const VoiceContext = createContext<VoiceContextValue>({
@@ -41,8 +42,16 @@ export interface ChatMessage {
  * Provider component for the Voice Context
  */
 export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
-  // State
-  const [voiceState, setVoiceState] = useState<VoiceState>(VoiceState.IDLE);
+  // Use the voice state hook to access native state
+  const voiceStateFromHook = useVoiceStateHook();
+  
+  // Use the voice state from the hook rather than managing our own
+  const voiceState = voiceStateFromHook.voiceState;
+  const isListening = voiceStateFromHook.isListening;
+  const isSpeaking = voiceStateFromHook.isSpeaking;
+  const isError = voiceStateFromHook.isError;
+  
+  // Other state we still need to manage
   const [isWakeWordEnabled, setWakeWordEnabled] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<string>('');
@@ -72,6 +81,7 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
           timestamp: apiResponse.timestamp || Date.now()
         };
         
+        console.log('Adding assistant message to chat history:', assistantMessage);
         setChatHistory(prevHistory => [...prevHistory, assistantMessage]);
         
         // Use TTS to speak the response
@@ -81,25 +91,41 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
     onError: (apiError) => {
       console.error('API error:', apiError);
       setError(`Error communicating with server: ${apiError.message}`);
-      setVoiceState(VoiceState.ERROR);
     }
   });
   
-  // Computed state
-  const isListening = voiceState === VoiceState.LISTENING;
-  const isSpeaking = voiceState === VoiceState.SPEAKING;
-  const isError = voiceState === VoiceState.ERROR;
-  
+  // Log component mount and initial state
+  useEffect(() => {
+    console.log('🎤 VoiceProvider mounted');
+    console.log('🎤 Initial voice state:', voiceState);
+    console.log('🎤 Initial wake word enabled:', isWakeWordEnabled);
+    return () => {
+      console.log('🎤 VoiceProvider unmounting');
+    };
+  }, []);
+
   // Log when wake word state changes for debugging purposes
   useEffect(() => {
-    console.log(`Wake word enabled state changed to: ${isWakeWordEnabled}`);
+    console.log(`🎤 Wake word enabled state changed to: ${isWakeWordEnabled}`);
   }, [isWakeWordEnabled]);
+
+  // Log when voice state changes
+  useEffect(() => {
+    console.log(`🎙️ Voice state changed to: ${voiceState}`);
+  }, [voiceState]);
+
+  // Log when listening/speaking states change
+  useEffect(() => {
+    console.log(`🔊 Listening: ${isListening}, Speaking: ${isSpeaking}`);
+  }, [isListening, isSpeaking]);
   
   // Set up voice service event listeners
   useEffect(() => {
+    console.log('🎤 Setting up speech result listener');
     // Speech result listener
     const speechResultUnsubscribe = voiceService.onSpeechResult((event) => {
-      console.log('Speech result received:', event.text);
+      console.log('🎤 Speech result received:', event.text);
+      console.log('🎤 Current voice state:', voiceState);
       setTranscript(event.text);
       
       // Add user message to chat history
@@ -109,38 +135,30 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
         type: 'text',
         timestamp: Date.now()
       };
-      
-      setChatHistory(prevHistory => [...prevHistory, userMessage]);
-      
+      console.log('💬 Adding user message to chat history:', userMessage);
+      setChatHistory(prevHistory => {
+        const newHistory = [...prevHistory, userMessage];
+        console.log('📜 Updated chat history length:', newHistory.length);
+        return newHistory;
+      });
       // Process the message with the server API
-      setVoiceState(VoiceState.PROCESSING);
+      console.log('🌐 Processing speech with server API');
       processSpeechWithServer(event.text, [...chatHistory, userMessage]);
-    });
-    
-    // Voice state change listener
-    const voiceStateUnsubscribe = voiceService.onVoiceStateChange((event) => {
-      console.log('Voice state changed:', event.state);
-      setVoiceState(event.state as VoiceState);
     });
     
     return () => {
       // Cleanup listeners on unmount
+      console.log('Cleaning up speech result listener');
       speechResultUnsubscribe();
-      voiceStateUnsubscribe();
     };
   }, [voiceService, chatHistory]);
   
   // Process speech with server API
   const processSpeechWithServer = useCallback(async (speechText: string, currentHistory: ChatMessage[]) => {
     try {
-      console.log('Processing speech with server API:', speechText);
-      setVoiceState(VoiceState.PROCESSING);
-      
+      console.log('🌐 Processing speech with server API:', speechText);
+      console.log('📜 Current history length:', currentHistory.length);
       const response = await serverApi.sendMessage(speechText, currentHistory);
-      
-      // State is already updated via onResponse callback
-      setVoiceState(VoiceState.SPEAKING);
-      
       return response;
     } catch (err) {
       // Error handling is done in onError callback
@@ -149,63 +167,30 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
     }
   }, [serverApi]);
   
+  // Use directly the startListening from hook
+  const startListening = voiceStateFromHook.startListening;
+  
   // Use native TTS to speak the response
   const speakResponse = useCallback(async (responseText: string) => {
     try {
       console.log('Speaking response:', responseText);
-      setVoiceState(VoiceState.SPEAKING);
       
-      // Use native module for TTS
+      // Already handled by the native side
       await voiceService.speakResponse(responseText);
       
-      // After speaking is done, reset to idle state
-      setVoiceState(VoiceState.IDLE);
+      // The native side will automatically start listening again
+      console.log('Response spoken, native side will automatically restart listening');
     } catch (err) {
       console.error('Error speaking response:', err);
       setError(`Error speaking response: ${err}`);
-      setVoiceState(VoiceState.ERROR);
     }
   }, [voiceService]);
   
-  // Start listening for voice input
-  const startListening = useCallback(async (): Promise<boolean> => {
-    try {
-      console.log('Starting voice listening...');
-      setVoiceState(VoiceState.LISTENING);
-      setError(null);
-      
-      const result = await voiceService.startListening();
-      return result;
-    } catch (err) {
-      console.error('Error starting voice listening:', err);
-      setError(`Error starting voice listening: ${err}`);
-      setVoiceState(VoiceState.ERROR);
-      return false;
-    }
-  }, [voiceService]);
+  // Use directly the stopListening from hook
+  const stopListening = voiceStateFromHook.stopListening;
   
-  // Stop listening for voice input
-  const stopListening = useCallback(async (): Promise<boolean> => {
-    try {
-      if (voiceState === VoiceState.LISTENING) {
-        console.log('Stopping voice listening...');
-        setVoiceState(VoiceState.IDLE);
-        
-        const result = await voiceService.stopListening();
-        return result;
-      }
-      return true;
-    } catch (err) {
-      console.error('Error stopping voice listening:', err);
-      setError(`Error stopping voice listening: ${err}`);
-      setVoiceState(VoiceState.ERROR);
-      return false;
-    }
-  }, [voiceState, voiceService]);
-  
-  // Reset state to default
+  // Reset state to default (just transcript and response as we're using the hook for state)
   const resetState = useCallback(() => {
-    setVoiceState(VoiceState.IDLE);
     setError(null);
     setTranscript('');
     setResponse('');
@@ -217,36 +202,8 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
     setChatHistory([]);
   }, []);
   
-  // Effect to handle wake word detection state change
-  useEffect(() => {
-    if (voiceState === VoiceState.WAKE_WORD_DETECTED) {
-      // Wake word was detected, start listening
-      startListening();
-    }
-  }, [voiceState, startListening]);
-  
-  // Safe wrapper for setWakeWordEnabled to ensure proper typing
-  const handleSetWakeWordEnabled = useCallback((enabled: boolean) => {
-    setWakeWordEnabled(enabled);
-  }, []);
-  
-  // Interrupt current speech
-  const interruptSpeech = useCallback(async (): Promise<boolean> => {
-    try {
-      if (isSpeaking) {
-        console.log('Interrupting speech...');
-        const result = await voiceService.interruptSpeech();
-        setVoiceState(VoiceState.IDLE);
-        return result;
-      }
-      return false;
-    } catch (err) {
-      console.error('Error interrupting speech:', err);
-      setError(`Error interrupting speech: ${err}`);
-      setVoiceState(VoiceState.ERROR);
-      return false;
-    }
-  }, [isSpeaking, voiceService]);
+  // Use directly the interruptSpeech from hook
+  const interruptSpeech = voiceStateFromHook.interruptSpeech;
   
   // Context value
   const value: VoiceContextValue = {
@@ -259,8 +216,8 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
     isListening,
     isSpeaking,
     isError,
-    setVoiceState,
-    setWakeWordEnabled: handleSetWakeWordEnabled,
+    setVoiceState: () => {}, // This is now handled by the native side
+    setWakeWordEnabled,
     setError,
     setTranscript,
     setResponse,

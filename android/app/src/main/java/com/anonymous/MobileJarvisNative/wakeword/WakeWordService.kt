@@ -490,10 +490,31 @@ class WakeWordService : Service() {
             
             // Note: We're not stopping the recorder or detector, just ignoring wake word events
             // This allows the microphone to remain active for voice processing
-            // But we'll disable the callback to prevent wake word triggers
+            try {
+                porcupineManager?.stop()
+                Log.d(TAG, "Explicitly stopped porcupineManager to pause wake word detection")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error stopping porcupineManager during pause: ${e.message}", e)
+            }
+            
+            // Disable the callback to prevent wake word triggers
             wakeWordCallback = null
             
             Log.d(TAG, "Wake word detection paused, microphone still active")
+            
+            // Set a timer to automatically resume wake word detection if it's stuck in paused state
+            serviceScope.launch {
+                try {
+                    // After 2 minutes, check if we're still paused and should auto-resume
+                    delay(2 * 60 * 1000L) // 2 minutes
+                    if (isPaused) {
+                        Log.w(TAG, "Wake word detection stuck in paused state for 2 minutes, auto-resuming")
+                        resumeWakeWordDetectionFromPaused()
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error in auto-resume timer: ${e.message}", e)
+                }
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error pausing wake word detection: ${e.message}", e)
         }
@@ -509,7 +530,7 @@ class WakeWordService : Service() {
         }
         
         try {
-            Log.i(TAG, "Resuming wake word detection")
+            Log.i(TAG, "Resuming wake word detection from paused state")
             
             // Reset paused flag
             isPaused = false
@@ -520,9 +541,40 @@ class WakeWordService : Service() {
             // Restore wake word callback
             wakeWordCallback = createWakeWordCallback()
             
+            // Explicitly restart the porcupine manager
+            try {
+                porcupineManager?.start()
+                Log.d(TAG, "Successfully restarted porcupineManager")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error restarting porcupineManager, will try to reinitialize: ${e.message}", e)
+                
+                // If starting fails, try to reinitialize
+                serviceScope.launch(Dispatchers.IO) {
+                    try {
+                        // Short delay before reinitializing
+                        delay(500)
+                        Log.d(TAG, "Reinitializing wake word detection after failed resume")
+                        initWakeWordDetection()
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error reinitializing wake word detection: ${e.message}", e)
+                    }
+                }
+            }
+            
             Log.d(TAG, "Wake word detection resumed")
         } catch (e: Exception) {
             Log.e(TAG, "Error resuming wake word detection: ${e.message}", e)
+            
+            // If resuming fails, attempt to reinitialize the whole wake word detection
+            serviceScope.launch(Dispatchers.IO) {
+                try {
+                    delay(1000)
+                    Log.w(TAG, "Attempting to reinitialize wake word detection after resume failure")
+                    initWakeWordDetection()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to reinitialize wake word detection: ${e.message}", e)
+                }
+            }
         }
     }
     

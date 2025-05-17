@@ -87,10 +87,6 @@ class WakeWordService {
     const timeString = new Date(timestamp).toLocaleTimeString();
     
     // Log the detection with emoji for visibility
-    console.log('🎤 Wake word detected!');
-    console.log(`⏰ Timestamp: ${timeString}`);
-    console.log(`📍 Confidence: ${event.confidence || 'N/A'}`);
-    
     // Additional debug information if available
     if (event.debug) {
       console.log('🔍 Debug info:', event.debug);

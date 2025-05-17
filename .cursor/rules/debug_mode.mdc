@@ -1,0 +1,9 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+Description: Use these rules when we are debugging a feature
+
+- Run npm run android at the end of each attempted fix
+- Do not create a summary markdown or README unless asked

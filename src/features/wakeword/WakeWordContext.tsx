@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import WakeWordService from './WakeWordService';
 import { Alert } from 'react-native';
 import { checkWakeWordPermissions, requestWakeWordPermissions } from '../settings/permissions';
+import { VoiceState } from '../voice/VoiceService';
+import { useVoiceState } from '../voice/hooks/useVoiceState';
 
 interface WakeWordContextType {
     isEnabled: boolean;
@@ -27,6 +29,9 @@ export const WakeWordProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const [isRunning, setIsRunning] = useState(false);
     const [isInitialized, setIsInitialized] = useState(false);
     const wakeWordService = WakeWordService.getInstance();
+    
+    // Get voice state to coordinate with ongoing conversations
+    const { voiceState } = useVoiceState();
 
     // Sync state with native module
     const syncState = useCallback(async () => {
@@ -117,11 +122,14 @@ export const WakeWordProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             const timeString = eventTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
             
             console.log('\n');
-            console.log('🔊 🔊 🔊 🔊 🔊 🔊 🔊 🔊 🔊 🔊 🔊 �� 🔊 🔊 🔊 🔊 🔊');
-            console.log('🎤 WAKE WORD "JARVIS" DETECTED in React Native! 🎤');
-            console.log(`⏰ Time: ${timeString}`);
-            console.log('🔊 🔊 🔊 🔊 🔊 🔊 🔊 🔊 🔊 🔊 🔊 �� 🔊 🔊 🔊 🔊 🔊');
-            console.log('\n');
+            console.log(`⏰ Time: ${timeString}, 🎤 WAKE WORD "JARVIS" DETECTED in React Native! 🎤`);
+            
+            // Skip wake word activation if not in IDLE state
+            // More specific check using enum values rather than string comparison
+            if (voiceState !== VoiceState.IDLE) {
+                console.log('Conversation already in progress, ignoring wake word');
+                return;
+            }
             
             // Ensure running state is accurate
             setIsRunning(true);
@@ -130,7 +138,7 @@ export const WakeWordProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return () => {
             subscription?.remove();
         };
-    }, []);
+    }, [voiceState]);
 
     // Periodically sync state with native module (every 30 seconds)
     useEffect(() => {

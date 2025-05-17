@@ -1,0 +1,8 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+Description: Rules for React
+
+- Hooks should only be called at the top level of a component, not inside conditions, loops, or other hooks 

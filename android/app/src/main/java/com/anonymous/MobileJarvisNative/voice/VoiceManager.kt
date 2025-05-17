@@ -79,7 +79,7 @@ class VoiceManager private constructor() {
         private var instance: VoiceManager? = null
         
         // Constants
-        const val MAX_NO_SPEECH_RETRIES = 2
+        const val MAX_NO_SPEECH_RETRIES = 3
         const val RECOGNITION_DEBOUNCE_MS = 3000L
         const val MAX_SPEECH_RECOGNITION_RETRY_COUNT = 3
         
@@ -291,6 +291,17 @@ class VoiceManager private constructor() {
             Log.d(TAG, "SpeechRecognizer is starting to listen for user input.")
             speechRecognizer?.startListening(createRecognizerIntent())
             Log.i(TAG, "SpeechRecognizer started listening.")
+            
+            // Explicitly tell any wake word service to remain paused
+            try {
+                val intent = Intent("com.anonymous.MobileJarvisNative.PAUSE_WAKE_WORD_KEEP_LISTENING")
+                context.sendBroadcast(intent)
+                Log.d(TAG, "Sent broadcast to ensure wake word detection remains paused during listening")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error sending pause wake word broadcast: ${e.message}", e)
+            }
+        } else {
+            Log.d(TAG, "Already listening, ignoring startListening() call")
         }
     }
     
@@ -315,6 +326,10 @@ class VoiceManager private constructor() {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+            // Increase timeouts for better UX
+            // putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 5000) // 5s silence to end
+            // putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 2500) // 2.5s possible silence
+            // putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 3000) // Minimum 3s listening
         }
     }
     
@@ -583,9 +598,16 @@ class VoiceManager private constructor() {
             is VoiceState.SPEAKING,
             is VoiceState.ERROR -> {
                 // Ensure wake word detection is paused during active conversation
-                Log.d(TAG, "Active conversation state, pausing wake word detection")
+                Log.d(TAG, "Active conversation state (${newState.javaClass.simpleName}), pausing wake word detection")
                 try {
                     voiceProcessor.stop()
+                    
+                    // For LISTENING state, make sure speech recognizer is active
+                    if (newState is VoiceState.LISTENING && !isListening) {
+                        Log.d(TAG, "LISTENING state detected but isListening=false, reactivating speech recognizer")
+                        isListening = true
+                        speechRecognizer?.startListening(createRecognizerIntent())
+                    }
                 } catch (e: Exception) {
                     Log.e(TAG, "Error pausing wake word detection", e)
                 }

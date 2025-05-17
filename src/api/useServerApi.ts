@@ -66,6 +66,7 @@ export const useServerApi = (options: UseServerApiOptions = {}): UseServerApiRes
       if (options.onResponse) {
         options.onResponse(result);
       }
+      console.log('API Response:\n', result);
       
       return result;
     } catch (err) {

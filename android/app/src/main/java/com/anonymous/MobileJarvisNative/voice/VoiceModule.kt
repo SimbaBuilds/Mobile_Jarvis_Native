@@ -172,19 +172,59 @@ class VoiceModule(private val reactContext: ReactApplicationContext) : ReactCont
             coroutineScope.launch {
                 try {
                     // Update voice state to speaking
+                    Log.i(TAG, "Setting voice state to SPEAKING")
                     voiceManager.updateState(VoiceManager.VoiceState.SPEAKING)
                     
                     // Use Deepgram for TTS
                     val deepgramClient = DeepgramClient(reactContext)
                     deepgramClient.initialize()
+                    Log.i(TAG, "Speaking response via Deepgram")
                     deepgramClient.speak(text)
                     
                     // After speaking is complete, reset state
-                    voiceManager.updateState(VoiceManager.VoiceState.IDLE)
+                    Log.i(TAG, "Speaking complete, setting state to LISTENING directly instead of IDLE")
+                    
+                    // Add a small delay before starting to listen again
+                    Log.i(TAG, "Waiting 800ms before starting listening")
+                    kotlinx.coroutines.delay(800)
+                    
+                    // Ensure we don't go to IDLE which would trigger wake word detection
+                    // Instead go directly to LISTENING state
+                    voiceManager.updateState(VoiceManager.VoiceState.LISTENING)
+                    
+                    Log.i(TAG, "AUTO-RESTART: Response spoken, automatically setting state to LISTENING")
+                    try {
+                        // Explicitly start listening after the state change to avoid race conditions
+                        kotlinx.coroutines.delay(200)
+                        voiceManager.startListening()
+                        Log.i(TAG, "AUTO-RESTART: Successfully started listening")
+                    } catch (startError: Exception) {
+                        Log.e(TAG, "AUTO-RESTART: Failed to start listening", startError)
+                        // Try one more time after a short delay
+                        kotlinx.coroutines.delay(500)
+                        try {
+                            Log.i(TAG, "AUTO-RESTART: Retrying start listening")
+                            voiceManager.startListening()
+                            Log.i(TAG, "AUTO-RESTART: Successfully started listening on retry")
+                        } catch (retryError: Exception) {
+                            Log.e(TAG, "AUTO-RESTART: Failed to start listening on retry", retryError)
+                            // If we still can't start listening, at least set the state back to IDLE
+                            // so the system isn't stuck in an invalid state
+                            Log.i(TAG, "Setting voice state to IDLE after failed restarts")
+                            voiceManager.updateState(VoiceManager.VoiceState.IDLE)
+                        }
+                    }
                     
                     promise.resolve(true)
                 } catch (e: Exception) {
                     Log.e(TAG, "Error in speakResponse coroutine", e)
+                    // Try to get back to a good state
+                    try {
+                        Log.i(TAG, "Setting voice state to IDLE after error")
+                        voiceManager.updateState(VoiceManager.VoiceState.IDLE)
+                    } catch (stateError: Exception) {
+                        Log.e(TAG, "Failed to update state after error", stateError)
+                    }
                     promise.reject("ERR_TTS", e.message, e)
                 }
             }

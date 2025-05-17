@@ -110,6 +110,8 @@ class ServerApiService {
         body: JSON.stringify(request)
       });
 
+      console.log('Response:\n', response);
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Server API error:', response.status, errorText);
